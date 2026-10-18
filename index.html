@@ -82,22 +82,23 @@
               <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd76a"/><stop offset="1" stop-color="#c98b0e"/></linearGradient>
               <linearGradient id="cl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a7086"/><stop offset="1" stop-color="#262a38"/></linearGradient>
             </defs>
-            <!-- 전선 -->
-            <path d="M152 150 C182 150 186 112 176 90 C168 72 140 74 112 92" fill="none" stroke="#ff5252" stroke-width="7" stroke-linecap="round"/>
-            <path d="M40 150 C14 150 12 110 26 92 C40 74 70 78 90 96" fill="none" stroke="#4fc3f7" stroke-width="7" stroke-linecap="round"/>
             <!-- 전구 -->
             <circle class="halo" cx="100" cy="62" r="62" fill="url(#hl)"/>
             <path d="M88 96 C68 82 70 30 100 30 C130 30 132 82 112 96 Z" fill="#fff3b0" stroke="#ffe082" stroke-width="3"/>
             <path d="M94 96 L92 62 L97 56 L100 62 L103 56 L108 62 L106 96" fill="none" stroke="#ff9800" stroke-width="3.5" stroke-linejoin="round"/>
-            <rect x="88" y="96" width="24" height="18" rx="3" fill="#c3c9cf"/>
+            <rect x="88" y="96" width="24" height="18" rx="3" fill="#c3c9cf"/><!-- 꼭지쇠 -->
             <path d="M88 101 H112 M88 107 H112" stroke="#8d969e" stroke-width="2"/>
-            <path d="M93 114 H107 L103 121 H97 Z" fill="#333"/>
+            <path d="M93 114 H107 L104 121 H96 Z" fill="#333"/>
+            <rect x="96" y="120" width="8" height="7" rx="3" fill="#dfe3e7" stroke="#8d969e" stroke-width="1"/><!-- 꼭지 -->
+            <!-- 전선: (+)극 → 꼭지쇠, (−)극 → 꼭지 -->
+            <path d="M156 162 C190 162 190 105 146 105 L113 105" fill="none" stroke="#ff5252" stroke-width="7" stroke-linecap="round"/>
+            <path d="M42 162 C10 162 12 136 46 136 L90 136 Q100 136 100 129" fill="none" stroke="#4fc3f7" stroke-width="7" stroke-linecap="round"/>
             <!-- 전지 -->
-            <rect x="44" y="134" width="104" height="32" rx="7" fill="url(#cl)"/>
-            <rect x="120" y="134" width="28" height="32" fill="url(#bd)"/>
-            <rect x="148" y="143" width="8" height="14" rx="2" fill="#dfe3e7"/>
-            <text x="82" y="156" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" font-family="system-ui">1.5V</text>
-            <text x="134" y="157" text-anchor="middle" font-size="16" font-weight="900" fill="#5a3d00" font-family="system-ui">+</text>
+            <rect x="44" y="146" width="104" height="32" rx="7" fill="url(#cl)"/>
+            <rect x="120" y="146" width="28" height="32" fill="url(#bd)"/>
+            <rect x="148" y="155" width="8" height="14" rx="2" fill="#dfe3e7"/>
+            <text x="82" y="168" text-anchor="middle" font-size="14" font-weight="800" fill="#fff" font-family="system-ui">1.5V</text>
+            <text x="134" y="169" text-anchor="middle" font-size="16" font-weight="900" fill="#5a3d00" font-family="system-ui">+</text>
             <!-- 반짝 -->
             <path d="M160 26 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4z" fill="#fff59d"/>
             <path d="M38 34 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z" fill="#fff59d" opacity=".8"/>
