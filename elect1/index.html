@@ -21,6 +21,13 @@
   button:hover,select:hover{border-color:#b9b0a0}
   button:disabled{opacity:.4;cursor:default}
   button.on{background:#e8f0fe;border-color:var(--accent);color:#1a4fb0}
+  .brand{margin-left:auto;display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);
+    padding:6px 12px 6px 6px;border:1px solid var(--line);border-radius:999px;background:#fffdf8;white-space:nowrap;font-size:14px}
+  .brand:hover{border-color:#9b5de5}
+  .brand .pad{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:17px;
+    background:linear-gradient(135deg,#4f7cff,#9b5de5)}
+  .brand b{background:linear-gradient(90deg,#ff6b6b,#ffb703,#2ec4b6,#4f7cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand small{color:var(--muted);font-size:12px}
   label.chk{display:flex;align-items:center;gap:4px;font-size:15px;padding:0 4px;cursor:pointer;white-space:nowrap}
   main{flex:1;display:flex;min-height:0}
   aside{width:150px;background:var(--panel);border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto}
@@ -73,6 +80,9 @@
     <label class="chk"><input type="checkbox" id="chkFlow" checked> 전류 흐름 보기</label>
     <label class="chk"><input type="checkbox" id="chkBright"> 밝기 숫자 보기</label>
   </div>
+  <a class="brand" href="https://games.brendy.net/" title="Brendy Games 첫 화면으로">
+    <span class="pad">🎮</span><span><b>Brendy</b> Games 작품<br><small>games.brendy.net</small></span>
+  </a>
 </header>
 <main>
   <aside>
