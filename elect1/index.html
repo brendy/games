@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>전기회로 키트</title>
+<style>
+  :root{
+    --bg:#f4f1ea; --panel:#ffffff; --ink:#2b2d33; --muted:#6b6f78; --line:#ddd6c8;
+    --accent:#2f6fde; --warn:#d93025; --board:#fbfaf6; --grid:#ebe5d8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif}
+  body{display:flex;flex-direction:column;overflow:hidden}
+  header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  header h1{font-size:20px;margin:0 8px 0 0;white-space:nowrap}
+  .tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  button,select{font:inherit;font-size:15px;border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:7px 12px;border-radius:10px;cursor:pointer}
+  button:hover,select:hover{border-color:#b9b0a0}
+  button:disabled{opacity:.4;cursor:default}
+  button.on{background:#e8f0fe;border-color:var(--accent);color:#1a4fb0}
+  label.chk{display:flex;align-items:center;gap:4px;font-size:15px;padding:0 4px;cursor:pointer;white-space:nowrap}
+  main{flex:1;display:flex;min-height:0}
+  aside{width:150px;background:var(--panel);border-right:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+  aside h2{font-size:14px;color:var(--muted);margin:0}
+  .part{border:1px solid var(--line);border-radius:12px;padding:6px;text-align:center;cursor:grab;user-select:none;touch-action:none;background:#fffdf8}
+  .part:hover{border-color:var(--accent)}
+  .part svg{width:100%;height:64px;pointer-events:none}
+  .part div{font-size:15px;font-weight:600}
+  .hint{font-size:12.5px;color:var(--muted);line-height:1.5}
+  #stage{flex:1;position:relative;min-width:0}
+  #board{width:100%;height:100%;display:block;touch-action:none;user-select:none;background:var(--board)}
+  #status{position:absolute;left:12px;top:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);
+    border-radius:12px;padding:8px 12px;font-size:15px;pointer-events:none}
+  #warn{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--warn);color:#fff;font-weight:700;
+    padding:10px 16px;border-radius:12px;font-size:16px;display:none;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  .term{cursor:crosshair}
+  .term circle.ring{fill:transparent}
+  .term:hover circle.dot,.term.target circle.dot{fill:#ffe082;stroke:#f57f17}
+  .comp{cursor:move}
+  .wirehit{cursor:pointer}
+  @keyframes blink{50%{opacity:.25}}
+  .shorted{animation:blink .5s infinite}
+  @media (max-width:720px){
+    main{flex-direction:column}
+    aside{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+    aside h2,.hint{display:none}
+    .part{flex:1}
+    .part svg{height:44px}
+    header h1{font-size:17px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ 전기회로 키트</h1>
+  <div class="tools">
+    <button id="btnRotate" title="선택한 부품 돌리기 (R)">⟳ 돌리기</button>
+    <button id="btnDelete" title="선택한 부품·전선 지우기 (Delete)">🗑 지우기</button>
+    <button id="btnClear">모두 지우기</button>
+    <select id="preset">
+      <option value="">예시 회로 불러오기…</option>
+      <option value="basic">전지 1개 + 전구 1개</option>
+      <option value="batSeries">전지 2개 직렬연결</option>
+      <option value="batParallel">전지 2개 병렬연결</option>
+      <option value="bulbSeries">전구 2개 직렬연결</option>
+      <option value="bulbParallel">전구 2개 병렬연결</option>
+      <option value="touch">전지와 전구를 맞대어 불 켜기</option>
+      <option value="touchSeries">전지 2개 맞대기 + 전구</option>
+    </select>
+    <label class="chk"><input type="checkbox" id="chkFlow" checked> 전류 흐름 보기</label>
+    <label class="chk"><input type="checkbox" id="chkBright"> 밝기 숫자 보기</label>
+  </div>
+</header>
+<main>
+  <aside>
+    <h2>부품함</h2>
+    <div class="part" data-type="cell"><svg id="pv-cell" viewBox="-90 -45 185 90"></svg><div>전지</div></div>
+    <div class="part" data-type="battery"><svg id="pv-battery" viewBox="-125 -45 250 90"></svg><div>전지 + 끼우개</div></div>
+    <div class="part" data-type="bare"><svg id="pv-bare" viewBox="-60 -100 120 140"></svg><div>전구</div></div>
+    <div class="part" data-type="bulb"><svg id="pv-bulb" viewBox="-90 -90 180 145"></svg><div>전구 + 끼우개</div></div>
+    <div class="part" data-type="switch"><svg id="pv-switch" viewBox="-110 -40 220 80"></svg><div>스위치</div></div>
+    <p class="hint">부품을 끌어다 놓거나 눌러서 꺼내요.<br><br>은색 <b>단자</b>를 끌어 다른 단자에 놓으면 전선이 연결돼요.<br><br>전구는 <b>꼭지</b>와 <b>꼭지쇠</b>에 각각 연결해야 불이 켜져요.<br><br>전지와 전구를 서로 <b>맞닿게</b> 놓아도 전기가 통해요.<br><br>스위치를 누르면 열리고 닫혀요.</p>
+  </aside>
+  <div id="stage">
+    <svg id="board" viewBox="0 0 1400 860" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M40 0H0V40" fill="none" stroke="var(--grid)" stroke-width="1.5"/>
+        </pattern>
+        <radialGradient id="glow">
+          <stop offset="0" stop-color="#fff59d" stop-opacity="1"/>
+          <stop offset=".35" stop-color="#ffe066" stop-opacity=".75"/>
+          <stop offset="1" stop-color="#ffd54f" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="cell" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5b6170"/><stop offset=".5" stop-color="#2c303a"/><stop offset="1" stop-color="#1c1f26"/>
+        </linearGradient>
+        <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffd76a"/><stop offset=".5" stop-color="#d9a21b"/><stop offset="1" stop-color="#a87a10"/>
+        </linearGradient>
+        <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#e2c08a"/><stop offset="1" stop-color="#c69a5a"/>
+        </linearGradient>
+      </defs>
+      <rect x="-2000" y="-2000" width="5400" height="4860" fill="url(#grid)"/>
+      <text id="empty" x="700" y="430" text-anchor="middle" font-size="28" fill="#b5ab98">왼쪽 부품함에서 전지, 전구, 스위치를 꺼내 보세요</text>
+      <g id="gComps"></g>
+      <g id="gWires"></g>
+      <g id="gDots" pointer-events="none"></g>
+      <g id="gTerms"></g>
+      <path id="draft" fill="none" stroke="#2f6fde" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round" pointer-events="none"/>
+    </svg>
+    <div id="status"></div>
+    <div id="warn">⚠ 합선! 전지의 두 극이 전구 없이 바로 연결되었어요. 전선을 떼어 주세요.</div>
+  </div>
+</main>
+
+<script>
+(() => {
+  // ---------- 설정 ----------
+  const E = 1.5;          // 전지 1개 전압 (V)
+  const R_INT = 0.1;      // 전지 내부 저항 (Ω)
+  const R_BULB = 10;      // 전구 저항 (Ω)
+  const R_WIRE = 0.01;    // 전선·닫힌 스위치 저항 (Ω)
+  const SHORT_I = 2;      // 이 전류(A)를 넘으면 합선으로 판단
+  const P0 = Math.pow(E / (R_BULB + R_INT + 4 * R_WIRE), 2) * R_BULB; // 기준 밝기: 전지 1개 + 전구 1개 + 스위치 (전선 3개)
+  const WIRE_COLORS = ['#e53935', '#263238', '#1e88e5', '#fbc02d', '#43a047'];
+  const W = 1400, H = 860;
+
+  const TOUCH = 7;        // 단자끼리 이 거리(px) 안이면 맞닿은 것으로 본다
+  const SNAP = 28;        // 놓을 때 이 거리 안의 단자에 착 붙인다
+  // 단자의 n: 전기적으로 같은 곳(마디) 번호. 전지의 n=1이 (+)극, 전구(bare)의 n=0이 꼭지쇠, n=1이 꼭지
+  const DEFS = {
+    battery: { terms: [{ x: -112, y: 0, dx: -1, dy: 0, n: 0 }, { x: 112, y: 0, dx: 1, dy: 0, n: 1 }], box: [-122, -50, 244, 100] },
+    cell:    { terms: [{ x: -72, y: 0, dx: -1, dy: 0, n: 0 }, { x: 82, y: 0, dx: 1, dy: 0, n: 1 }], box: [-84, -40, 180, 80], small: true },
+    bulb:    { terms: [{ x: -78, y: 27, dx: -1, dy: 0, n: 0 }, { x: 78, y: 27, dx: 1, dy: 0, n: 1 }], box: [-92, -92, 184, 150] },
+    bare:    { terms: [{ x: -19, y: -3, dx: -1, dy: 0, n: 0 }, { x: 19, y: -3, dx: 1, dy: 0, n: 0 }, { x: 0, y: 30, dx: 0, dy: 1, n: 1 }], box: [-50, -100, 100, 150], small: true },
+    switch:  { terms: [{ x: -98, y: 0, dx: -1, dy: 0, n: 0 }, { x: 98, y: 0, dx: 1, dy: 0, n: 1 }], box: [-108, -40, 216, 98] },
+  };
+  const isBat = t => t === 'battery' || t === 'cell';
+  const isBulb = t => t === 'bulb' || t === 'bare';
+  const nTerms = c => DEFS[c.type].terms.length;
+
+  // ---------- 상태 ----------
+  let comps = [], wires = [], nextId = 1, colorIdx = 0;
+  let selected = null;           // {kind:'comp'|'wire', id}
+  let drag = null;               // 부품 이동
+  let wireDraft = null;          // 전선 그리기
+  let palettePending = null;     // 부품함에서 끌기
+  let result = null;
+  let anim = [];                 // 전류 점 애니메이션
+
+  const $ = id => document.getElementById(id);
+  const svg = $('board');
+  const gComps = $('gComps'), gWires = $('gWires'), gDots = $('gDots'), gTerms = $('gTerms'), draft = $('draft');
+  const showFlow = () => $('chkFlow').checked;
+  const showBright = () => $('chkBright').checked;
+
+  // ---------- 기하 ----------
+  function termPos(c, t) {
+    const d = DEFS[c.type].terms[t], a = c.rot * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+    return { x: c.x + d.x * cs - d.y * sn, y: c.y + d.x * sn + d.y * cs, dx: d.dx * cs - d.dy * sn, dy: d.dx * sn + d.dy * cs };
+  }
+  const compById = id => comps.find(c => c.id === id);
+  function wirePath(w) {
+    const ca = compById(w.a.c), cb = compById(w.b.c);
+    const p = termPos(ca, w.a.t), q = termPos(cb, w.b.t);
+    const dist = Math.hypot(q.x - p.x, q.y - p.y), k = Math.max(50, dist * 0.4);
+    return `M${p.x},${p.y} C${p.x + p.dx * k},${p.y + p.dy * k + dist * 0.12} ${q.x + q.dx * k},${q.y + q.dy * k + dist * 0.12} ${q.x},${q.y}`;
+  }
+  function svgPt(e) {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function nearestTerm(p, exclude) {
+    let best = null, bd = 30;
+    for (const c of comps) for (let t = 0; t < nTerms(c); t++) {
+      if (exclude && exclude.c === c.id && exclude.t === t) continue;
+      const q = termPos(c, t), d = Math.hypot(q.x - p.x, q.y - p.y);
+      if (d < bd) { bd = d; best = { c: c.id, t }; }
+    }
+    return best;
+  }
+
+  // ---------- 회로 계산 (마디 해석법) ----------
+  // 서로 다른 부품의 단자가 맞닿은 곳 찾기
+  function findContacts() {
+    const out = [];
+    for (let i = 0; i < comps.length; i++) for (let j = i + 1; j < comps.length; j++) {
+      const a = comps[i], b = comps[j];
+      for (let ta = 0; ta < nTerms(a); ta++) {
+        const p = termPos(a, ta);
+        for (let tb = 0; tb < nTerms(b); tb++) {
+          const q = termPos(b, tb);
+          if (Math.hypot(p.x - q.x, p.y - q.y) < TOUCH) out.push({ a: { c: a.id, t: ta }, b: { c: b.id, t: tb } });
+        }
+      }
+    }
+    return out;
+  }
+  const nodeKey = e => e.c + ':' + DEFS[compById(e.c).type].terms[e.t].n;
+
+  function solve() {
+    const idx = new Map(); let n = 0;
+    for (const c of comps) { idx.set(c.id + ':0', n++); idx.set(c.id + ':1', n++); }
+    const G = Array.from({ length: n }, () => new Float64Array(n)), I = new Float64Array(n);
+    const addG = (a, b, g) => { G[a][a] += g; G[b][b] += g; G[a][b] -= g; G[b][a] -= g; };
+    for (let i = 0; i < n; i++) G[i][i] += 1e-9;
+    for (const c of comps) {
+      const a = idx.get(c.id + ':0'), b = idx.get(c.id + ':1');
+      if (isBat(c.type)) { addG(a, b, 1 / R_INT); I[b] += E / R_INT; I[a] -= E / R_INT; } // 마디1 = (+)극
+      else if (isBulb(c.type)) addG(a, b, 1 / R_BULB);
+      else if (c.type === 'switch' && c.closed) addG(a, b, 1 / R_WIRE);
+    }
+    for (const w of wires) addG(idx.get(nodeKey(w.a)), idx.get(nodeKey(w.b)), 1 / R_WIRE);
+    const contacts = findContacts();
+    for (const k of contacts) addG(idx.get(nodeKey(k.a)), idx.get(nodeKey(k.b)), 1 / R_WIRE);
+
+    // 가우스 소거
+    const V = new Float64Array(n), M = G.map((row, i) => { const r = Array.from(row); r.push(I[i]); return r; });
+    for (let col = 0; col < n; col++) {
+      let piv = col;
+      for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+      [M[col], M[piv]] = [M[piv], M[col]];
+      const d = M[col][col]; if (Math.abs(d) < 1e-15) continue;
+      for (let r = col + 1; r < n; r++) {
+        const f = M[r][col] / d; if (!f) continue;
+        for (let k = col; k <= n; k++) M[r][k] -= f * M[col][k];
+      }
+    }
+    for (let r = n - 1; r >= 0; r--) {
+      let s = M[r][n]; for (let k = r + 1; k < n; k++) s -= M[r][k] * V[k];
+      V[r] = Math.abs(M[r][r]) < 1e-15 ? 0 : s / M[r][r];
+    }
+    const v = key => V[idx.get(key)];
+    const res = { comp: {}, wire: {}, short: false, contacts };
+    for (const c of comps) {
+      const dv = v(c.id + ':1') - v(c.id + ':0');
+      if (isBat(c.type)) {
+        const cur = (E - dv) / R_INT; res.comp[c.id] = { I: cur, short: Math.abs(cur) > SHORT_I };
+        if (Math.abs(cur) > SHORT_I) res.short = true;
+      } else if (isBulb(c.type)) {
+        const cur = dv / R_BULB; res.comp[c.id] = { I: cur, P: cur * cur * R_BULB };
+      }
+    }
+    for (const w of wires) res.wire[w.id] = (v(nodeKey(w.a)) - v(nodeKey(w.b))) / R_WIRE; // a→b 방향 전류
+    return res;
+  }
+
+  // ---------- 그리기 ----------
+  function drawBattery(c, r) {
+    const sh = r && r.short ? ' class="shorted"' : '';
+    return `
+      <rect x="-100" y="-34" width="200" height="68" rx="12" fill="#3a4050" stroke="${r && r.short ? '#d93025' : '#232733'}" stroke-width="${r && r.short ? 5 : 2}"${sh}/>
+      <rect x="-112" y="-4" width="24" height="8" fill="#b8c0c8"/><rect x="88" y="-4" width="24" height="8" fill="#b8c0c8"/>
+      <rect x="-96" y="-10" width="8" height="20" fill="#c9d0d6"/><rect x="88" y="-10" width="8" height="20" fill="#c9d0d6"/>
+      <polyline points="-88,-12 -84,12 -80,-12 -76,12 -72,-12" fill="none" stroke="#c9d0d6" stroke-width="3"/>
+      <rect x="-70" y="-23" width="142" height="46" rx="8" fill="url(#cell)"/>
+      <rect x="34" y="-23" width="38" height="46" fill="url(#band)"/>
+      <rect x="72" y="-9" width="10" height="18" rx="3" fill="#d6dbe0"/>
+      <text x="-18" y="7" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">1.5V</text>
+      <text x="53" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#5a3d00">+</text>
+      <text x="-100" y="-42" text-anchor="middle" font-size="26" font-weight="900" fill="#1f4fbf">−</text>
+      <text x="100" y="-42" text-anchor="middle" font-size="26" font-weight="900" fill="#d32f2f">+</text>`;
+  }
+  function drawCell(c, r) {
+    const sh = r && r.short;
+    return `
+      <rect x="-70" y="-23" width="142" height="46" rx="8" fill="url(#cell)" stroke="${sh ? '#d93025' : 'none'}" stroke-width="5"${sh ? ' class="shorted"' : ''}/>
+      <rect x="34" y="-23" width="38" height="46" fill="url(#band)"/>
+      <rect x="72" y="-9" width="10" height="18" rx="3" fill="#d6dbe0" stroke="#9aa3ab" stroke-width="1.5"/>
+      <rect x="-73" y="-17" width="5" height="34" rx="2" fill="#c9d0d6" stroke="#9aa3ab" stroke-width="1"/>
+      <text x="-18" y="7" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">1.5V</text>
+      <text x="53" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#5a3d00">+</text>
+      <text x="-72" y="-30" text-anchor="middle" font-size="24" font-weight="900" fill="#1f4fbf">−</text>
+      <text x="80" y="-30" text-anchor="middle" font-size="24" font-weight="900" fill="#d32f2f">+</text>`;
+  }
+  const bulbAlpha = r => { const b = r ? r.P / P0 : 0; return b < 0.01 ? 0 : 1 - Math.exp(-1.2 * b); };
+  // 유리구 + 필라멘트 (아래쪽 끝이 y=-14)
+  function bulbGlass(alpha) {
+    const glass = alpha > 0 ? `rgba(255,${235 - 30 * alpha | 0},${150 - 100 * alpha | 0},${0.35 + 0.55 * alpha})` : 'rgba(225,238,250,.55)';
+    const fil = alpha > 0 ? '#ff9800' : '#7a5a48';
+    return (alpha > 0 ? `<circle cx="0" cy="-46" r="${60 + 50 * alpha}" fill="url(#glow)" opacity="${alpha}"/>` : '') + `
+      <path d="M-15 -14 C-36 -30 -34 -82 0 -82 C34 -82 36 -30 15 -14 Z" fill="${glass}" stroke="#8fa6b8" stroke-width="2.5"/>
+      <path d="M-7 -14 L-9 -48 L-5 -54 L-1 -48 L3 -54 L7 -48 L9 -14" fill="none" stroke="${fil}" stroke-width="${alpha > 0 ? 3.5 : 2.5}" stroke-linejoin="round"/>`;
+  }
+  const brightText = (c, r, y) => showBright() && r
+    ? `<text x="0" y="${y}" text-anchor="middle" font-size="20" font-weight="700" fill="#5d4a1a" transform="rotate(${-c.rot} 0 ${y})">밝기 ${Math.round(r.P / P0 * 100)}%</text>` : '';
+  function drawBulb(c, r) {
+    return bulbGlass(bulbAlpha(r)) + `
+      <rect x="-62" y="6" width="124" height="42" rx="8" fill="#e8e3d6" stroke="#b9ae97" stroke-width="2"/>
+      <rect x="-78" y="23" width="30" height="8" fill="#b8c0c8"/><rect x="48" y="23" width="30" height="8" fill="#b8c0c8"/>
+      <path d="M-48 27 H-16 M48 27 H16" stroke="#9aa3ab" stroke-width="5"/>
+      <rect x="-17" y="-16" width="34" height="26" rx="3" fill="#c3c9cf" stroke="#8d969e" stroke-width="2"/>
+      <path d="M-17 -9 H17 M-17 -2 H17 M-17 5 H17" stroke="#8d969e" stroke-width="2"/>` + brightText(c, r, 78);
+  }
+  // 끼우개 없는 전구: 꼭지쇠(옆면 나사 부분)와 꼭지(맨 아래 끝)
+  function drawBare(c, r) {
+    const lab = (x, y, anchor, t) => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="14" font-weight="700" fill="#5f6670" transform="rotate(${-c.rot} ${x} ${y})">${t}</text>`;
+    return `<g transform="translate(0,-6)">${bulbGlass(bulbAlpha(r))}</g>
+      <rect x="-17" y="-21" width="34" height="35" rx="3" fill="#c3c9cf" stroke="#8d969e" stroke-width="2"/>
+      <path d="M-17 -14 L17 -10 M-17 -6 L17 -2 M-17 2 L17 6" stroke="#8d969e" stroke-width="2"/>
+      <path d="M-13 14 H13 L8 24 H-8 Z" fill="#2b2b2b"/>
+      <rect x="-5" y="22" width="10" height="9" rx="4" fill="#d0d6db" stroke="#7d868e" stroke-width="1.5"/>
+      ${lab(-26, -22, 'end', '꼭지쇠')}${lab(12, 46, 'start', '꼭지')}` + brightText(c, r, 64);
+  }
+  function drawSwitch(c) {
+    const ang = c.closed ? 0 : -34;
+    return `
+      <rect x="-84" y="-28" width="168" height="56" rx="10" fill="url(#wood)" stroke="#a37b41" stroke-width="2"/>
+      <rect x="-98" y="-4" width="20" height="8" fill="#b8c0c8"/><rect x="78" y="-4" width="20" height="8" fill="#b8c0c8"/>
+      <path d="M-80 0 H-46 M80 0 H50" stroke="#9aa3ab" stroke-width="6"/>
+      <path d="M38 -10 V10 M50 -10 V10" stroke="#8d969e" stroke-width="5" stroke-linecap="round"/>
+      <g transform="rotate(${ang} -46 0)">
+        <rect x="-46" y="-4" width="96" height="8" rx="3" fill="#c9d0d6" stroke="#7d868e" stroke-width="1.5"/>
+        <rect x="46" y="-12" width="24" height="24" rx="6" fill="#e53935" stroke="#a52520" stroke-width="2"/>
+      </g>
+      <circle cx="-46" cy="0" r="8" fill="#9aa3ab" stroke="#6d757c" stroke-width="2"/>
+      <text x="0" y="52" text-anchor="middle" font-size="18" font-weight="700" fill="${c.closed ? '#2e7d32' : '#8a6d3b'}" transform="rotate(${-c.rot} 0 52)">${c.closed ? '닫힘' : '열림'}</text>`;
+  }
+  function drawComp(c, r) {
+    return { battery: drawBattery, cell: drawCell, bulb: drawBulb, bare: drawBare, switch: drawSwitch }[c.type](c, r);
+  }
+
+  function render() {
+    result = solve();
+    $('empty').style.display = comps.length ? 'none' : '';
+    // 부품
+    let h = '';
+    for (const c of comps) {
+      const sel = selected && selected.kind === 'comp' && selected.id === c.id;
+      const [bx, by, bw, bh] = DEFS[c.type].box;
+      h += `<g class="comp" data-comp="${c.id}" transform="translate(${c.x},${c.y}) rotate(${c.rot})">
+        <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="transparent"/>
+        ${drawComp(c, result.comp[c.id])}
+        ${sel ? `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="14" fill="none" stroke="#2f6fde" stroke-width="3" stroke-dasharray="9 6"/>` : ''}
+      </g>`;
+    }
+    gComps.innerHTML = h;
+    // 전선
+    h = '';
+    for (const w of wires) {
+      const d = wirePath(w), sel = selected && selected.kind === 'wire' && selected.id === w.id;
+      h += `<g data-wire="${w.id}">
+        ${sel ? `<path d="${d}" fill="none" stroke="#7fb0ff" stroke-width="16" stroke-linecap="round"/>` : ''}
+        <path id="wp${w.id}" d="${d}" fill="none" stroke="${w.color}" stroke-width="7" stroke-linecap="round"/>
+        <path class="wirehit" d="${d}" fill="none" stroke="transparent" stroke-width="22"/>
+      </g>`;
+    }
+    gWires.innerHTML = h;
+    // 단자 (집게 포함)
+    h = '';
+    const used = new Map(), touched = new Set();
+    for (const w of wires) for (const e of [w.a, w.b]) used.set(e.c + ':' + e.t, w.color);
+    for (const k of result.contacts) for (const e of [k.a, k.b]) touched.add(e.c + ':' + e.t);
+    for (const c of comps) for (let t = 0; t < nTerms(c); t++) {
+      const p = termPos(c, t), key = c.id + ':' + t, col = used.get(key), r = DEFS[c.type].small ? 7 : 10;
+      h += `<g class="term" data-term="${key}">
+        <circle class="ring" cx="${p.x}" cy="${p.y}" r="20"/>
+        ${touched.has(key) ? `<circle cx="${p.x}" cy="${p.y}" r="15" fill="rgba(76,175,80,.25)" stroke="#43a047" stroke-width="3"/>` : ''}
+        <circle class="dot" cx="${p.x}" cy="${p.y}" r="${r}" fill="${col ? col : '#cfd5da'}" stroke="${col ? '#222' : '#7d868e'}" stroke-width="2.5"/>
+      </g>`;
+    }
+    gTerms.innerHTML = h;
+    // 전류 점
+    buildDots();
+    // 상태
+    const bulbs = comps.filter(c => isBulb(c.type));
+    const lit = bulbs.filter(c => result.comp[c.id].P / P0 >= 0.01).length;
+    $('status').innerHTML = bulbs.length
+      ? (lit ? `💡 켜진 전구 <b>${lit}</b> / ${bulbs.length}개` : `전구가 꺼져 있어요 (0 / ${bulbs.length}개)`)
+      : '부품 ' + comps.length + '개 · 전선 ' + wires.length + '개';
+    $('warn').style.display = result.short ? 'block' : 'none';
+    $('btnRotate').disabled = !(selected && selected.kind === 'comp');
+    $('btnDelete').disabled = !selected;
+    save();
+  }
+
+  function buildDots() {
+    anim = []; let h = '';
+    if (!showFlow()) { gDots.innerHTML = ''; return; }
+    const list = [];
+    for (const w of wires) {
+      const cur = result.wire[w.id];
+      if (Math.abs(cur) < 0.003) continue;
+      const path = $('wp' + w.id), len = path.getTotalLength(), k = Math.max(2, Math.floor(len / 34));
+      list.push({ path, len, k, cur, off: (anim.find(a => a.id === w.id) || {}).off || 0, id: w.id });
+      for (let i = 0; i < k; i++) h += `<circle r="5" fill="#ffeb3b" stroke="#e65100" stroke-width="2" data-d="${w.id}"/>`;
+    }
+    gDots.innerHTML = h;
+    const circles = gDots.querySelectorAll('circle'); let ci = 0;
+    for (const a of list) { a.dots = Array.from(circles).slice(ci, ci + a.k); ci += a.k; anim.push(a); }
+    stepDots(0);
+  }
+  let last = performance.now();
+  function stepDots(dt) {
+    for (const a of anim) {
+      const speed = Math.min(420, 50 + 260 * Math.abs(a.cur)) * Math.sign(a.cur);
+      a.off = (a.off + speed * dt) % a.len; if (a.off < 0) a.off += a.len;
+      const gap = a.len / a.k;
+      a.dots.forEach((d, i) => {
+        const p = a.path.getPointAtLength((a.off + i * gap) % a.len);
+        d.setAttribute('cx', p.x); d.setAttribute('cy', p.y);
+      });
+    }
+  }
+  function loop(t) { const dt = Math.min(0.05, (t - last) / 1000); last = t; stepDots(dt); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+
+  // ---------- 조작 ----------
+  function addComp(type, x, y) {
+    const c = { id: nextId++, type, x, y, rot: 0, closed: false };
+    comps.push(c); selected = { kind: 'comp', id: c.id }; return c;
+  }
+  function clamp(c) { c.x = Math.max(60, Math.min(W - 60, c.x)); c.y = Math.max(60, Math.min(H - 60, c.y)); }
+  // 놓았을 때 가까운 다른 부품의 단자에 착 붙여서 맞닿게 한다
+  function snap(c) {
+    let best = null, bd = SNAP;
+    for (let t = 0; t < nTerms(c); t++) {
+      const p = termPos(c, t);
+      for (const o of comps) if (o !== c) for (let u = 0; u < nTerms(o); u++) {
+        const q = termPos(o, u), d = Math.hypot(q.x - p.x, q.y - p.y);
+        if (d < bd) { bd = d; best = { dx: q.x - p.x, dy: q.y - p.y }; }
+      }
+    }
+    if (best) { c.x += best.dx; c.y += best.dy; }
+  }
+  function deleteSelected() {
+    if (!selected) return;
+    if (selected.kind === 'comp') {
+      comps = comps.filter(c => c.id !== selected.id);
+      wires = wires.filter(w => w.a.c !== selected.id && w.b.c !== selected.id);
+    } else wires = wires.filter(w => w.id !== selected.id);
+    selected = null; render();
+  }
+  function rotateSelected() {
+    if (!selected || selected.kind !== 'comp') return;
+    const c = compById(selected.id); c.rot = (c.rot + 90) % 360; render();
+  }
+
+  svg.addEventListener('pointerdown', e => {
+    const p = svgPt(e);
+    const term = e.target.closest('[data-term]');
+    if (term) {
+      const [c, t] = term.dataset.term.split(':').map(Number);
+      wireDraft = { from: { c, t } };
+      e.preventDefault(); return;
+    }
+    const comp = e.target.closest('[data-comp]');
+    if (comp) {
+      const c = compById(+comp.dataset.comp);
+      drag = { c, dx: p.x - c.x, dy: p.y - c.y, sx: p.x, sy: p.y, moved: false };
+      selected = { kind: 'comp', id: c.id };
+      comps.splice(comps.indexOf(c), 1); comps.push(c); // 맨 위로
+      render(); e.preventDefault(); return;
+    }
+    const wire = e.target.closest('[data-wire]');
+    if (wire) { selected = { kind: 'wire', id: +wire.dataset.wire }; render(); return; }
+    selected = null; render();
+  });
+
+  window.addEventListener('pointermove', e => {
+    if (palettePending) {
+      if (!palettePending.c && Math.hypot(e.clientX - palettePending.sx, e.clientY - palettePending.sy) > 6) {
+        const p = svgPt(e); palettePending.c = addComp(palettePending.type, p.x, p.y);
+        drag = { c: palettePending.c, dx: 0, dy: 0, sx: p.x, sy: p.y, moved: true };
+      }
+    }
+    if (drag) {
+      const p = svgPt(e);
+      if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 5) drag.moved = true;
+      if (drag.moved) { drag.c.x = p.x - drag.dx; drag.c.y = p.y - drag.dy; render(); }
+    } else if (wireDraft) {
+      const p = svgPt(e), c = compById(wireDraft.from.c), s = termPos(c, wireDraft.from.t);
+      draft.setAttribute('d', `M${s.x},${s.y} L${p.x},${p.y}`);
+      const tgt = nearestTerm(p, wireDraft.from);
+      gTerms.querySelectorAll('.term.target').forEach(el => el.classList.remove('target'));
+      if (tgt) { const el = gTerms.querySelector(`[data-term="${tgt.c}:${tgt.t}"]`); if (el) el.classList.add('target'); }
+    }
+  });
+
+  window.addEventListener('pointerup', e => {
+    if (palettePending) {
+      const pp = palettePending; palettePending = null;
+      if (!pp.c) { // 눌러서 꺼내기
+        const n = comps.length % 6;
+        addComp(pp.type, 560 + n * 50, 300 + n * 50);
+        drag = null; render(); return;
+      }
+      const r = svg.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+        comps = comps.filter(c => c !== pp.c); selected = null;
+      }
+    }
+    if (drag) {
+      const c = drag.c;
+      if (!drag.moved && c.type === 'switch') c.closed = !c.closed;
+      if (drag.moved) { clamp(c); snap(c); }
+      drag = null; render(); return;
+    }
+    if (wireDraft) {
+      const tgt = nearestTerm(svgPt(e), wireDraft.from), f = wireDraft.from;
+      wireDraft = null; draft.setAttribute('d', '');
+      if (tgt) {
+        const dup = wires.some(w => (w.a.c === f.c && w.a.t === f.t && w.b.c === tgt.c && w.b.t === tgt.t) ||
+                                    (w.b.c === f.c && w.b.t === f.t && w.a.c === tgt.c && w.a.t === tgt.t));
+        if (!dup) {
+          const w = { id: nextId++, a: f, b: tgt, color: WIRE_COLORS[colorIdx++ % WIRE_COLORS.length] };
+          wires.push(w); selected = { kind: 'wire', id: w.id };
+        }
+      }
+      render();
+    }
+  });
+  window.addEventListener('pointercancel', () => { drag = null; wireDraft = null; palettePending = null; draft.setAttribute('d', ''); render(); });
+
+  document.querySelectorAll('.part').forEach(el => {
+    el.addEventListener('pointerdown', e => {
+      palettePending = { type: el.dataset.type, sx: e.clientX, sy: e.clientY, c: null };
+      e.preventDefault();
+    });
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+    if (e.key === 'Delete' || e.key === 'Backspace') { deleteSelected(); e.preventDefault(); }
+    else if (e.key === 'r' || e.key === 'R' || e.key === 'ㄱ') rotateSelected();
+    else if (e.key === 'Escape') { selected = null; render(); }
+  });
+  $('btnRotate').onclick = rotateSelected;
+  $('btnDelete').onclick = deleteSelected;
+  $('btnClear').onclick = () => { if (!comps.length || confirm('모든 부품과 전선을 지울까요?')) { comps = []; wires = []; selected = null; render(); } };
+  $('chkFlow').onchange = render;
+  $('chkBright').onchange = render;
+
+  // ---------- 예시 회로 ----------
+  function loadPreset(name) {
+    comps = []; wires = []; selected = null; colorIdx = 0;
+    const B = (x, y, rot = 0) => addComp('battery', x, y).id && Object.assign(comps[comps.length - 1], { rot });
+    const L = (x, y) => addComp('bulb', x, y);
+    const S = (x, y, closed = true) => Object.assign(addComp('switch', x, y), { closed });
+    const wire = (c1, t1, c2, t2) => wires.push({ id: nextId++, a: { c: c1.id, t: t1 }, b: { c: c2.id, t: t2 }, color: WIRE_COLORS[colorIdx++ % WIRE_COLORS.length] });
+    if (name === 'basic') {
+      const b = B(480, 620), s = S(880, 620), l = L(680, 300);
+      wire(b, 1, s, 0); wire(s, 1, l, 1); wire(l, 0, b, 0);
+    } else if (name === 'batSeries') {
+      const b1 = B(400, 620), b2 = B(680, 620), s = S(980, 620), l = L(700, 300);
+      wire(b1, 1, b2, 0); wire(b2, 1, s, 0); wire(s, 1, l, 1); wire(l, 0, b1, 0);
+    } else if (name === 'batParallel') {
+      const b1 = B(520, 540), b2 = B(520, 720), s = S(920, 540), l = L(720, 260);
+      wire(b1, 1, b2, 1); wire(b1, 0, b2, 0); wire(b1, 1, s, 0); wire(s, 1, l, 1); wire(l, 0, b1, 0);
+    } else if (name === 'bulbSeries') {
+      const b = B(500, 640), s = S(900, 640), l1 = L(520, 300), l2 = L(880, 300);
+      wire(b, 1, s, 0); wire(s, 1, l2, 1); wire(l2, 0, l1, 1); wire(l1, 0, b, 0);
+    } else if (name === 'bulbParallel') {
+      const b = B(500, 680), s = S(900, 680), l1 = L(700, 210), l2 = L(700, 430);
+      wire(l1, 1, l2, 1); wire(l1, 0, l2, 0); wire(b, 1, s, 0); wire(s, 1, l2, 1); wire(l2, 0, b, 0);
+    } else if (name === 'touch') {
+      // 전구의 꼭지를 전지 (+)극에 맞대고, 전지 (−)극과 꼭지쇠를 전선 하나로 잇기
+      const c = addComp('cell', 560, 480), l = Object.assign(addComp('bare', 672, 480), { rot: 90 });
+      wire(c, 0, l, 0);
+    } else if (name === 'touchSeries') {
+      // 끼우개 없는 전지 2개를 맞대어 직렬연결
+      const c1 = addComp('cell', 420, 520), c2 = addComp('cell', 574, 520), l = Object.assign(addComp('bare', 686, 520), { rot: 90 });
+      wire(c1, 0, l, 0);
+    }
+    selected = null; render();
+  }
+  $('preset').onchange = e => { if (e.target.value) { if (!comps.length || confirm('지금 회로를 지우고 예시 회로를 불러올까요?')) loadPreset(e.target.value); e.target.value = ''; } };
+
+  // ---------- 저장 ----------
+  function save() {
+    try { localStorage.setItem('circuitKit.v1', JSON.stringify({ comps, wires, nextId, colorIdx })); } catch (_) {}
+  }
+  function load() {
+    try {
+      const d = JSON.parse(localStorage.getItem('circuitKit.v1'));
+      if (d && Array.isArray(d.comps)) { comps = d.comps; wires = d.wires || []; nextId = d.nextId || 1; colorIdx = d.colorIdx || 0; }
+    } catch (_) {}
+  }
+
+  // ---------- 부품함 미리보기 ----------
+  // 같은 문서 안이라 보드의 그라디언트(#cell, #wood 등)를 그대로 쓸 수 있다
+  $('pv-battery').innerHTML = drawBattery({ rot: 0 });
+  $('pv-bulb').innerHTML = drawBulb({ rot: 0 }, null);
+  $('pv-cell').innerHTML = drawCell({ rot: 0 }, null);
+  $('pv-bare').innerHTML = drawBare({ rot: 0 }, null).replace(/<text[\s\S]*?<\/text>/g, '');
+  $('pv-switch').innerHTML = drawSwitch({ rot: 0, closed: false }).replace(/<text[\s\S]*?<\/text>/, '');
+
+  load(); render();
+})();
+</script>
+</body>
+</html>
