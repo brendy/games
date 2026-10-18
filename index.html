@@ -49,6 +49,7 @@
   .halo{transition:opacity .3s, r .3s;opacity:.75}
   a.card:hover .halo{opacity:1}
   .title{margin-top:16px;font-size:23px;font-weight:900}
+  .sub{margin-top:2px;font-size:15px;font-weight:700;color:var(--muted)}
   .meta{margin-top:6px;display:flex;gap:6px}
   .tag{font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;background:#e7fbf8;color:#11796f}
   .tag.y{background:#fff2cc;color:#8a5a00}
@@ -106,6 +107,39 @@
         </div>
         <div class="title">6학년 전기회로</div>
         <div class="meta"><span class="tag">과학</span><span class="tag y">실험 키트</span></div>
+      </a>
+
+      <a class="card" href="wonhong-detective/" aria-label="지구촌 탐정단, 괴도 원홍을 잡아라 게임으로 가기">
+        <div class="icon" style="background:linear-gradient(160deg,#1b3158,#0e1b33)">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <radialGradient id="sea" cx=".4" cy=".35"><stop offset="0" stop-color="#7cc8ff"/><stop offset="1" stop-color="#2f7fd6"/></radialGradient>
+            </defs>
+            <!-- 지구 -->
+            <circle cx="88" cy="88" r="56" fill="url(#sea)"/>
+            <path d="M58 56 C70 46 86 50 90 60 C94 70 82 74 84 84 C86 94 72 98 66 90 C60 82 50 78 52 68 Z" fill="#4fd18b"/>
+            <path d="M104 46 C118 48 132 58 134 72 C126 74 118 68 110 70 C104 62 98 54 104 46 Z" fill="#4fd18b"/>
+            <path d="M100 96 C112 92 126 98 128 110 C124 124 110 132 102 124 C96 116 92 104 100 96 Z" fill="#4fd18b"/>
+            <path d="M32 88 H144 M88 32 C66 52 66 124 88 144 M88 32 C110 52 110 124 88 144" fill="none" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/>
+            <circle cx="88" cy="88" r="56" fill="none" stroke="#ffc83d" stroke-width="4"/>
+            <!-- 원홍의 발자국 -->
+            <g fill="#ff5d6c">
+              <ellipse cx="34" cy="170" rx="6" ry="9" transform="rotate(-20 34 170)"/>
+              <ellipse cx="56" cy="160" rx="6" ry="9" transform="rotate(-20 56 160)"/>
+              <ellipse cx="74" cy="176" rx="6" ry="9" transform="rotate(-20 74 176)"/>
+            </g>
+            <!-- 돋보기 -->
+            <line x1="150" y1="148" x2="182" y2="182" stroke="#8a5a2b" stroke-width="13" stroke-linecap="round"/>
+            <circle cx="132" cy="128" r="30" fill="#ffffff" fill-opacity=".22" stroke="#ffc83d" stroke-width="9"/>
+            <path d="M118 116 A18 18 0 0 1 134 108" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-opacity=".8"/>
+            <!-- 물음표 -->
+            <text x="132" y="140" text-anchor="middle" font-size="32" font-weight="900" fill="#fff" font-family="system-ui">?</text>
+            <path d="M168 30 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z" fill="#ffc83d"/>
+          </svg>
+        </div>
+        <div class="title">지구촌 탐정단</div>
+        <div class="sub">괴도 원홍을 잡아라!</div>
+        <div class="meta"><span class="tag" style="background:#e6f0ff;color:#1f4fbf">사회</span><span class="tag y">추리 게임</span></div>
       </a>
 
       <div class="card soon" aria-hidden="true">
