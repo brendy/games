@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>지구촌 탐정단 - 괴도 원홍을 잡아라!</title>
+<style>
+:root{--bg:#0e1b33;--bg2:#15284a;--card:#1b3158;--card2:#233c6a;--ink:#f4f1e8;--mute:#a9b6d3;--gold:#ffc83d;--red:#ff5d6c;--green:#4fd18b;--blue:#59b6ff}
+*{box-sizing:border-box}
+html,body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#1e3a6b,var(--bg));color:var(--ink);font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;min-height:100%}
+body{padding:12px 16px 40px}
+button{font:inherit;color:inherit;cursor:pointer}
+h1,h2,h3{margin:0}
+.wrap{max-width:1180px;margin:0 auto}
+.btn{background:var(--gold);color:#2a1f00;border:0;border-radius:14px;padding:12px 20px;font-weight:800;font-size:16px;box-shadow:0 4px 0 #b88a00;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #b88a00}
+.btn.ghost{background:var(--card2);color:var(--ink);box-shadow:0 4px 0 #142544}
+.btn.sm{padding:7px 12px;font-size:14px;border-radius:10px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.card{background:var(--card);border-radius:18px;padding:16px;box-shadow:0 6px 18px #0006}
+.small{font-size:13px;color:var(--mute)}
+/* title */
+.title{text-align:center;padding:24px 0 10px}
+.globe{font-size:84px;display:inline-block;animation:spin 6s ease-in-out infinite}
+@keyframes spin{0%,100%{transform:rotate(-8deg) scale(1)}50%{transform:rotate(8deg) scale(1.08)}}
+.title h1{font-size:clamp(28px,6vw,52px);letter-spacing:-1px;margin-top:6px}
+.title h1 span{color:var(--gold)}
+.title p{color:var(--mute);font-size:17px;margin:8px 0 0}
+.cases{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:26px 0}
+.case{cursor:pointer;transition:transform .15s,background .15s;position:relative;border:2px solid transparent}
+.case:hover{transform:translateY(-4px);background:var(--card2);border-color:var(--gold)}
+.case .ic{font-size:44px}
+.case h3{font-size:21px;margin:6px 0 4px}
+.case .unit{display:inline-block;background:#0e1b33;color:var(--gold);border-radius:20px;padding:2px 10px;font-size:12px;margin-bottom:8px}
+.stars{font-size:20px;letter-spacing:2px;margin-top:8px;min-height:26px}
+.rankbar{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:6px}
+.chip{background:#0e1b33;border-radius:30px;padding:6px 14px;font-size:14px}
+/* hud */
+.hud{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.hud .name{font-weight:800;font-size:18px}
+.timebox{flex:1;min-width:200px}
+.timebar{height:16px;background:#0b1630;border-radius:10px;overflow:hidden;margin-top:4px}
+.timebar i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));transition:width .5s}
+.timebar.low i{background:linear-gradient(90deg,var(--red),#ff9a5c)}
+.trail{display:flex;gap:6px;align-items:center;font-size:20px}
+.trail b{width:26px;height:26px;border-radius:50%;background:#0b1630;display:grid;place-items:center;font-size:14px}
+.trail b.done{background:var(--green);color:#052}
+.trail b.now{background:var(--gold);color:#2a1f00;animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.2)}}
+.main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.mapcard{padding:10px;position:sticky;top:8px}
+@media(max-width:900px){.mapcard{position:static}}
+svg.map{width:100%;height:auto;display:block;border-radius:12px;touch-action:manipulation}
+.readout{margin-top:8px;text-align:center;font-weight:700;color:var(--gold);min-height:22px}
+.loc{display:flex;gap:14px;align-items:center}
+.scene{font-size:54px;background:#0e1b33;border-radius:16px;width:84px;height:84px;display:grid;place-items:center}
+.panel h3{margin:16px 0 8px;font-size:17px}
+.wits{display:grid;gap:8px}
+.wit{background:#12244a;border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start}
+.wit .face{font-size:30px}
+.wit .bubble{font-size:15px;line-height:1.55}
+.wit .bubble em{color:var(--gold);font-style:normal;font-weight:700}
+.wit .who{font-size:12px;color:var(--mute)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.tickets{display:grid;gap:8px}
+.ticket{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#fff7dc,#ffe9a6);color:#2a1f00;border-radius:12px;padding:10px 16px;border:0;text-align:left;font-weight:800;border-left:8px dashed #c78a00;transition:transform .12s}
+.ticket:hover{transform:translateX(4px)}
+.ticket small{display:block;font-weight:500;color:#6b5400}
+.ticket.x{opacity:.35;text-decoration:line-through;pointer-events:none}
+.lock{background:#0b1630;border:2px dashed #35508a;border-radius:12px;padding:14px;text-align:center;color:var(--mute)}
+.sus{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.sc{background:#12244a;border-radius:12px;padding:8px;text-align:left;border:2px solid transparent;font-size:12px;line-height:1.5}
+.sc .e{font-size:30px}
+.sc b{font-size:14px;display:block}
+.sc.ok{border-color:var(--green)}
+.sc.out{opacity:.3}
+.sc.pick{cursor:pointer}
+.sc.pick:hover{border-color:var(--gold)}
+.sc.wrong{opacity:.25;text-decoration:line-through;pointer-events:none}
+/* modal */
+.modal{position:fixed;inset:0;background:#030814cc;display:grid;place-items:center;padding:14px;z-index:20;overflow:auto}
+.modal.hidden{display:none}
+.mbox{background:var(--bg2);border:2px solid var(--gold);border-radius:22px;padding:22px;max-width:640px;width:100%;max-height:92vh;overflow:auto;animation:pop .25s}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.mbox h2{margin-bottom:8px}
+.mbox .big{font-size:56px;text-align:center}
+.opts{display:grid;gap:8px;margin:12px 0}
+.opt{background:var(--card2);border:2px solid transparent;border-radius:12px;padding:12px 14px;text-align:left;font-size:16px}
+.opt:hover{border-color:var(--gold)}
+.opt.good{background:#1d6b47;border-color:var(--green)}
+.opt.bad{background:#7a2433;border-color:var(--red)}
+.opt.sel{border-color:var(--gold);background:#3a4f86}
+.opts.grid{grid-template-columns:repeat(3,1fr)}
+.expl{background:#0b1630;border-radius:12px;padding:12px;margin-top:8px;line-height:1.6}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.notes li{margin:6px 0;line-height:1.5}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tab{background:var(--card);border:0;border-radius:10px;padding:8px 14px}
+.tab.on{background:var(--gold);color:#2a1f00;font-weight:800}
+.traitchips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.traitchips span{background:#0b1630;border:1px solid #35508a;border-radius:20px;padding:4px 10px;font-size:13px}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.confetti{position:fixed;top:-30px;font-size:26px;animation:fall linear forwards;pointer-events:none;z-index:30}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+.recap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:8px;text-align:left}
+.recap div{background:#0b1630;border-radius:12px;padding:10px;font-size:14px;line-height:1.5}
+.chartbox svg{width:100%;height:auto;background:#fff;border-radius:10px}
+.glow{animation:glow 1.2s infinite}
+@keyframes glow{50%{box-shadow:0 0 0 6px #ffc83d55}}
+.sync{position:fixed;right:10px;bottom:8px;background:#0b1630dd;border:1px solid #35508a;border-radius:20px;padding:4px 12px;font-size:12px;color:var(--mute);z-index:15;display:none}
+.inp{background:#0b1630;border:2px solid #35508a;border-radius:12px;padding:12px 14px;font:inherit;color:var(--ink);font-size:17px;width:100%}
+.inp:focus{outline:0;border-color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+<div id="modal" class="modal hidden"></div>
+<div id="syncbadge" class="sync"></div>
+<script src="config.js"></script>
+
+<script>
+/* =========================================================
+   데이터: 지도서(6-1-3 지구·대륙·국가 / 6-2-1 세계의 자연환경) 내용 기반
+   ========================================================= */
+const HQ={id:"seoul",name:"서울 본부",country:"대한민국",cont:"아시아",lat:37.6,lon:127.0,e:"🏢"};
+
+const CITIES=[
+{id:"london",name:"런던",country:"영국",cont:"유럽",lat:51.5,lon:-0.1,ocean:"대서양(북해)과 가까워요",terrain:"하천",climate:"온대",e:"🎡",
+ nat:["템스강이 도시 한가운데를 흘러요","1년 내내 비가 부슬부슬 내리고 겨울도 포근한 온대 기후예요"],
+ life:["경도 0°를 나타내는 본초 자오선이 지나는 그리니치 천문대가 있어요","빨간 2층 버스와 시계탑 빅벤으로 유명해요"],
+ land:["큰 섬으로 이루어진 섬나라예요"]},
+{id:"rome",name:"로마",country:"이탈리아",cont:"유럽",lat:41.9,lon:12.5,ocean:"지중해와 가까워요",terrain:"해안",climate:"온대",e:"🏛️",
+ nat:["여름은 덥고 건조하며 겨울에 비가 오는 지중해 기후예요","올리브와 포도가 잘 자라요"],
+ life:["도시 안에 세계에서 가장 작은 나라 바티칸이 있어요","콜로세움이 남아 있는 고대 도시예요"],
+ land:["영토가 장화 모양인 반도 나라예요"]},
+{id:"interlaken",name:"인터라켄",country:"스위스",cont:"유럽",lat:46.7,lon:7.9,ocean:"바다와 멀리 떨어진 내륙이에요",terrain:"산지",climate:"온대",e:"🏔️",
+ nat:["만년설이 쌓인 알프스 산맥 기슭이에요","여름에도 서늘해서 산비탈에 풀이 잘 자라요"],
+ life:["여름에 목동들이 소 떼를 몰고 산을 오르내리는 소몰이 축제가 열려요","경사가 급한 산을 오르는 산악 열차가 다녀요"],
+ land:["바다가 없는 내륙 국가예요"]},
+{id:"bergen",name:"베르겐",country:"노르웨이",cont:"유럽",lat:60.4,lon:5.3,ocean:"대서양(북해)과 가까워요",terrain:"해안",climate:"온대",e:"⛴️",
+ nat:["빙하가 깎아 만든 깊고 좁은 바다 골짜기, 피오르가 있어요","절벽 사이로 바닷물이 길게 들어와 있어요"],
+ life:["피오르를 구경하는 관광 유람선이 다녀요","여름에는 해가 아주 늦게까지 떠 있어요"],
+ land:["남북으로 길쭉한 나라예요"]},
+{id:"cairo",name:"카이로",country:"이집트",cont:"아프리카",lat:30.0,lon:31.2,ocean:"지중해와 가까워요",terrain:"하천",climate:"건조",e:"🐪",
+ nat:["비가 거의 오지 않는 건조 기후예요","도시 옆으로 나일강이 흘러요"],
+ life:["나일강 물을 끌어다 농사를 지어요","사막 가까이에 거대한 피라미드가 있어요"],
+ land:["국경선이 직선으로 그어진 나라예요"]},
+{id:"douz",name:"두즈",country:"튀니지",cont:"아프리카",lat:33.4,lon:9.0,ocean:"지중해에서 조금 떨어져 있어요",terrain:"사막",climate:"건조",e:"🏜️",
+ nat:["모래 언덕이 끝없이 이어진 사하라 사막의 관문이에요","낮에는 매우 뜨겁고 비가 거의 내리지 않아요"],
+ life:["물이 솟는 오아시스 주변에서 대추야자를 길러요","낙타를 타고 사막을 건너는 체험을 해요"],
+ land:["아프리카 북쪽 끝, 지중해에 면한 나라예요"]},
+{id:"serengeti",name:"세렝게티",country:"탄자니아",cont:"아프리카",lat:-2.3,lon:34.8,ocean:"바다와 떨어진 내륙이에요",terrain:"초원",climate:"열대",e:"🦁",
+ nat:["키 큰 풀이 끝없이 펼쳐진 초원이에요","비가 많은 계절과 거의 안 오는 계절이 뚜렷한 열대 사바나 기후예요"],
+ life:["사자와 얼룩말, 코끼리를 보러 오는 사파리 관광이 발달했어요","야생 동물 수백만 마리가 풀을 따라 이동해요"],
+ land:["적도 바로 아래, 남반구에 있는 나라예요"]},
+{id:"capetown",name:"케이프타운",country:"남아프리카 공화국",cont:"아프리카",lat:-33.9,lon:18.4,ocean:"대서양과 인도양이 만나는 바다와 가까워요",terrain:"해안",climate:"온대",e:"🐧",
+ nat:["꼭대기가 평평한 테이블산이 바다를 내려다봐요","12월~2월이 여름이고 6월~8월이 겨울이에요"],
+ life:["아프리카 대륙 맨 아래쪽 끝에 가까운 항구 도시예요","해변에서 펭귄을 만날 수 있어요"],
+ land:["남반구에 있어서 우리나라와 계절이 반대예요"]},
+{id:"manaus",name:"마나우스",country:"브라질",cont:"남아메리카",lat:-3.1,lon:-60.0,ocean:"바다와 멀리 떨어진 내륙이에요",terrain:"하천",climate:"열대",e:"🌴",
+ nat:["세계에서 가장 큰 열대 우림 속을 아마존강이 흘러요","일 년 내내 덥고 비가 자주 내려요"],
+ life:["강 위에 집을 띄우거나 높은 기둥 위에 집을 짓고 배로 이동해요","강에서 잡은 물고기를 즐겨 먹어요"],
+ land:["남아메리카에서 가장 넓은 나라예요"]},
+{id:"cusco",name:"쿠스코",country:"페루",cont:"남아메리카",lat:-13.5,lon:-72.0,ocean:"태평양 쪽 바다와 그리 멀지 않은 산속이에요",terrain:"산지",climate:"고산",e:"🦙",
+ nat:["높은 안데스 산맥 위라서 공기가 희박하고 서늘한 고산 기후예요","가파른 산비탈에 계단식 밭이 있어요"],
+ life:["야마와 알파카를 길러 털로 옷을 만들어요","잉카 문명의 도시 마추픽추를 보러 관광객이 와요"],
+ land:["남반구, 안데스 산맥에 걸친 나라예요"]},
+{id:"quito",name:"키토",country:"에콰도르",cont:"남아메리카",lat:-0.2,lon:-78.5,ocean:"태평양과 가까워요",terrain:"산지",climate:"고산",e:"🌋",
+ nat:["적도 바로 옆이지만 해발 고도가 높아 일 년 내내 봄처럼 선선해요","화산이 솟은 높은 안데스 산지예요"],
+ life:["적도 기념비에서 두 반구에 한 발씩 걸치고 사진을 찍어요","적도 위에 있어서 낮과 밤의 길이가 거의 같아요"],
+ land:["나라 이름이 에스파냐어로 ‘적도’라는 뜻이에요"]},
+{id:"rio",name:"리우데자네이루",country:"브라질",cont:"남아메리카",lat:-22.9,lon:-43.2,ocean:"대서양과 가까워요",terrain:"해안",climate:"열대",e:"🏖️",
+ nat:["해변과 바위산이 맞닿은 해안 도시예요","12월~2월에 가장 덥고 비도 많이 와요"],
+ life:["산꼭대기에 커다란 예수상이 서 있어요","해마다 삼바 축제가 열려요"],
+ land:["남반구에서 계절이 우리나라와 반대예요"]},
+{id:"nuuk",name:"누크",country:"그린란드(덴마크령)",cont:"북아메리카",lat:64.2,lon:-51.7,ocean:"대서양과 북극해 사이 바다와 가까워요",terrain:"빙하",climate:"한대",e:"🧊",
+ nat:["두꺼운 얼음과 눈으로 뒤덮인 세계에서 가장 큰 섬이에요","여름에도 기온이 낮은 한대 기후예요"],
+ life:["메르카토르 도법 세계지도에서는 아프리카만큼 커 보이지만 실제로는 훨씬 작아요","개썰매와 바다표범 사냥 문화가 있어요"],
+ land:["지구본에서 보면 지도보다 훨씬 작은 섬이에요"]},
+{id:"neworleans",name:"뉴올리언스",country:"미국",cont:"북아메리카",lat:30.0,lon:-90.1,ocean:"멕시코만, 대서양 쪽 바다와 가까워요",terrain:"하천",climate:"온대",e:"🎷",
+ nat:["미시시피강이 바다로 흘러드는 하구 근처예요","여름에는 무덥고 습해요"],
+ life:["강을 오르내리는 증기선과 재즈 음악으로 유명해요","미시시피강 물길을 이용한 물건 운반이 활발해요"],
+ land:["영토가 세계에서 손꼽히게 넓은 나라예요"]},
+{id:"newyork",name:"뉴욕",country:"미국",cont:"북아메리카",lat:40.7,lon:-74.0,ocean:"대서양과 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🗽",
+ nat:["여름은 덥고 겨울은 추운, 사계절이 뚜렷한 온대 기후예요","대서양으로 열린 항구가 발달했어요"],
+ life:["항구에서 자유의 여신상이 손님을 맞아요","높은 빌딩이 빽빽한 큰 도시예요"],
+ land:["서쪽 끝과 시각이 여러 시간 차이 나는, 영토가 넓은 나라예요"]},
+{id:"iqaluit",name:"이칼루이트",country:"캐나다",cont:"북아메리카",lat:63.7,lon:-68.5,ocean:"북극해와 가까워요",terrain:"빙하",climate:"한대",e:"🐻‍❄️",
+ nat:["땅이 꽁꽁 얼어 나무가 거의 자라지 못하는 한대 기후예요","겨울에는 해가 잠깐 떴다 져요"],
+ life:["이누이트 사람들이 스노모빌과 개썰매로 이동해요","순록과 바다표범 사냥으로 살아가요"],
+ land:["영토가 세계에서 두 번째로 넓은 나라예요"]},
+{id:"kathmandu",name:"카트만두",country:"네팔",cont:"아시아",lat:27.7,lon:85.3,ocean:"바다와 아주 멀리 떨어진 내륙이에요",terrain:"산지",climate:"고산",e:"🏔️",
+ nat:["세계에서 가장 높은 산 에베레스트가 있는 히말라야 산맥 아래예요","높은 곳은 만년설이 쌓여 있어요"],
+ life:["등산객을 안내하는 ‘셰르파’가 살아요","주변의 돌로 지은 돌집이 많고 분홍빛 소금도 나와요"],
+ land:["바다가 없는 내륙 국가예요"]},
+{id:"varanasi",name:"바라나시",country:"인도",cont:"아시아",lat:25.3,lon:83.0,ocean:"인도양과 멀리 떨어진 내륙이에요",terrain:"하천",climate:"온대",e:"🛕",
+ nat:["갠지스강이 흐르는 넓은 평야예요","여름에는 비를 몰고 오는 계절풍이 불어요"],
+ life:["강 주변 평야에서 쌀과 밀을 길러요","강가 계단에서 사람들이 몸을 씻고 기도해요"],
+ land:["인구가 아주 많고 영토가 넓은 나라예요"]},
+{id:"hochiminh",name:"호치민",country:"베트남",cont:"아시아",lat:10.8,lon:106.7,ocean:"태평양(남중국해)과 가까워요",terrain:"하천",climate:"열대",e:"🛶",
+ nat:["메콩강이 넓은 삼각주를 만들며 바다로 흘러요","일 년 내내 덥고 비가 많이 내리는 열대 기후예요"],
+ life:["배 위에서 과일과 채소를 사고파는 수상시장이 열려요","강과 수로가 도로 역할을 해요"],
+ land:["남북으로 길쭉한 나라예요"]},
+{id:"bangkok",name:"방콕",country:"태국",cont:"아시아",lat:13.8,lon:100.5,ocean:"태평양(타이만)과 가까워요",terrain:"하천",climate:"열대",e:"🛖",
+ nat:["짜오프라야강이 흐르고 일 년 내내 더워요","비가 많은 우기와 적은 건기가 있어요"],
+ life:["강가에 기둥을 세워 지은 수상 가옥이 있어요","운하 위로 배가 다녀서 ‘동양의 베네치아’로 불려요"],
+ land:["코끼리 얼굴 같은 모양이라고 하는 나라예요"]},
+{id:"singapore",name:"싱가포르",country:"싱가포르",cont:"아시아",lat:1.4,lon:103.8,ocean:"태평양과 인도양을 잇는 바닷길에 있어요",terrain:"해안",climate:"열대",e:"🦁",
+ nat:["적도 바로 위라서 일 년 내내 덥고 소나기(스콜)가 자주 와요","열대 우림이 곳곳에 남아 있어요"],
+ life:["배가 많이 오가는 큰 항구예요","도시가 곧 나라인 곳이에요"],
+ land:["도시 하나가 나라인 아주 작은 섬나라예요"]},
+{id:"ulaanbaatar",name:"울란바토르",country:"몽골",cont:"아시아",lat:47.9,lon:106.9,ocean:"바다와 아주 멀리 떨어진 내륙이에요",terrain:"초원",climate:"건조",e:"🐎",
+ nat:["나무가 적고 짧은 풀이 자라는 넓은 초원과 사막이 이어져요","비가 적은 건조 기후예요"],
+ life:["풀을 따라 가축을 몰고 옮겨 다니며 ‘게르’라는 천막집에서 살아요","말과 양을 길러요"],
+ land:["바다가 없는 내륙 국가예요"]},
+{id:"yakutsk",name:"야쿠츠크",country:"러시아",cont:"아시아",lat:62.0,lon:129.7,ocean:"바다와 멀리 떨어진 내륙이에요",terrain:"초원",climate:"냉대",e:"🥶",
+ nat:["겨울이 길고 영하 40°C 밑으로도 내려가는 냉대 기후예요","침엽수림(타이가)이 넓게 펼쳐져 있어요"],
+ life:["두꺼운 털옷을 입고, 땅이 얼어서 집을 기둥 위에 지어요","겨울에는 강이 꽁꽁 얼어 도로가 돼요"],
+ land:["영토가 세계에서 가장 넓은 나라예요"]},
+{id:"tokyo",name:"도쿄",country:"일본",cont:"아시아",lat:35.7,lon:139.7,ocean:"태평양과 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🗼",
+ nat:["사계절이 뚜렷하고 여름에 태풍이 지나가는 온대 기후예요","태평양을 바라보는 항구 도시예요"],
+ life:["우리나라와 같은 동경 135° 기준 시각을 써요","빠른 열차와 높은 탑으로 유명해요"],
+ land:["여러 개의 섬으로 이루어진 섬나라예요"]},
+{id:"sydney",name:"시드니",country:"호주",cont:"오세아니아",lat:-33.9,lon:151.2,ocean:"태평양과 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🦘",
+ nat:["12월이 한여름이고 6월이 겨울이에요","푸른 바다를 낀 항구 도시예요"],
+ life:["조개껍데기 모양 지붕의 오페라 하우스가 항구에 있어요","캥거루와 코알라가 사는 나라예요"],
+ land:["나라 하나가 대륙 하나를 통째로 차지하고 있어요"]},
+{id:"cairns",name:"케언스",country:"호주",cont:"오세아니아",lat:-16.9,lon:145.8,ocean:"태평양(산호해)과 맞닿아 있어요",terrain:"해안",climate:"열대",e:"🐠",
+ nat:["따뜻하고 얕은 바다에 산호가 쌓여 만들어진 산호초 해안이에요","일 년 내내 따뜻한 열대 기후예요"],
+ life:["세계 최대 산호초 지대인 그레이트배리어리프가 있어요","스노클링과 스쿠버다이빙 관광객이 많아요"],
+ land:["남반구에 있는, 큰 대륙의 북동쪽 바닷가예요"]},
+{id:"wellington",name:"웰링턴",country:"뉴질랜드",cont:"오세아니아",lat:-41.3,lon:174.8,ocean:"태평양과 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🐑",
+ nat:["바람이 아주 센 해안 도시예요","12월~2월이 여름이에요"],
+ life:["날짜 변경선(경도 180°)에 가까워서 세계에서 가장 먼저 새날을 맞는 나라 중 하나예요","양을 아주 많이 길러요"],
+ land:["큰 섬 두 개로 이루어진 섬나라예요"]},
+{id:"mcmurdo",name:"맥머도 기지",country:"남극 대륙(연구 기지)",cont:"남극",lat:-77.8,lon:166.7,ocean:"남극해와 맞닿아 있어요",terrain:"빙하",climate:"한대",e:"🧪",
+ nat:["일 년 내내 눈과 얼음으로 덮인, 지구에서 가장 추운 곳이에요","6개월 동안 해가 지지 않는 날과 뜨지 않는 날이 있어요"],
+ life:["사는 사람은 연구 기지의 과학자들뿐이에요","여러 나라가 함께 연구하는 대륙이에요"],
+ land:["어느 한 나라의 땅이 아닌 얼음 대륙이에요"]},
+{id:"dokdo",kr:1,sea:"동해",name:"독도",country:"대한민국",cont:"아시아",lat:37.24,lon:131.87,ocean:"동해 한가운데에 있어요",terrain:"해안",climate:"온대",e:"🏝️",
+ nat:["동해 한가운데에 화산 활동으로 만들어진 바위섬이에요","사방이 바다로 둘러싸여 있어요"],
+ life:["우리나라 영토의 가장 동쪽 끝(동경 132° 가까이)이에요","독도 경비대가 지키고 있어요"],land:["울릉도 가까이에 있는 우리나라의 섬이에요"]},
+{id:"marado",kr:1,sea:"남해",name:"마라도",country:"대한민국",cont:"아시아",lat:33.11,lon:126.27,ocean:"남해와 황해가 만나는 바다에 있어요",terrain:"해안",climate:"온대",e:"🌊",
+ nat:["바다 한가운데 풀밭이 펼쳐진 평평하고 작은 섬이에요","바람이 세고 파도가 높아요"],
+ life:["우리나라 영토의 가장 남쪽 끝(북위 33° 가까이)이에요","제주도에서 배를 타고 가요"],land:["제주도 남쪽 바다에 있는 섬이에요"]},
+{id:"baekdu",kr:1,sea:"내륙",name:"백두산",country:"대한민국",cont:"아시아",lat:42.0,lon:128.08,ocean:"바다와 떨어진 내륙이에요",terrain:"산지",climate:"냉대",e:"🌋",
+ nat:["꼭대기에 ‘천지’라는 호수가 있는 우리나라에서 가장 높은 산 중 하나예요","겨울이 매우 춥고 눈이 오래 쌓이는 곳이에요"],
+ life:["압록강과 두만강이 시작되는 곳이에요","중국과 맞닿은 국경에 있어요"],land:["우리나라 북쪽 끝 가까이에 있어요"]},
+{id:"incheon",kr:1,sea:"황해",name:"인천",country:"대한민국",cont:"아시아",lat:37.46,lon:126.7,ocean:"황해와 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🛫",
+ nat:["밀물과 썰물의 차가 커서 넓은 갯벌이 드러나요","서쪽 바다와 맞닿은 항구 도시예요"],
+ life:["큰 국제공항이 있어서 세계로 가는 관문이에요","중국과 가까운 서쪽 바다에 면해 있어요"],land:["서울에서 서쪽으로 가까워요"]},
+{id:"busan",kr:1,sea:"남해",name:"부산",country:"대한민국",cont:"아시아",lat:35.18,lon:129.08,ocean:"남해와 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🚢",
+ nat:["산이 바다 가까이까지 이어진 항구 도시예요","여름은 덥고 겨울은 비교적 따뜻한 온대 기후예요"],
+ life:["우리나라에서 가장 큰 항구가 있어 큰 배가 오가요","일본과 가까운 해협이 있어요"],land:["한반도 남동쪽 끝에 가까운 도시예요"]},
+{id:"gangneung",kr:1,sea:"동해",name:"강릉",country:"대한민국",cont:"아시아",lat:37.75,lon:128.9,ocean:"동해와 맞닿아 있어요",terrain:"해안",climate:"온대",e:"🏄",
+ nat:["높은 태백산맥 동쪽 기슭에 동해의 모래 해변이 이어져요","동해는 밀물과 썰물의 차이가 작아요"],
+ life:["해돋이를 보러 오는 사람이 많아요","2018년 겨울 올림픽 경기가 열린 도시예요"],land:["서울에서 동쪽으로 가면 닿는 동해안 도시예요"]},
+{id:"hallasan",kr:1,sea:"남해",name:"한라산(제주)",country:"대한민국",cont:"아시아",lat:33.36,lon:126.53,ocean:"남해와 황해 사이 바다에 있어요",terrain:"산지",climate:"온대",e:"⛰️",
+ nat:["꼭대기에 백록담이라는 호수가 있는 화산 산이에요","까만 현무암 돌이 많은 섬이에요"],
+ life:["돌, 바람, 여자가 많다고 해서 ‘삼다도’라고 불려요","바다에서 해녀가 물질을 해요"],land:["우리나라에서 가장 큰 섬에 있어요"]}
+];
+CITIES.forEach(c=>{c.fact=c.nat[0]+". "+c.life[0]+"."});
+
+const CLIM_DESC={열대:"일 년 내내 덥고 비가 자주 내리는",건조:"내리는 비보다 증발하는 물이 더 많은",온대:"사계절이 비교적 뚜렷하고 온화한",냉대:"겨울이 온대보다 훨씬 추운",한대:"눈과 얼음으로 덮인 매우 추운",고산:"높은 산 위라서 같은 위도의 낮은 곳보다 서늘한"};
+
+/* 용의자: 서로 속성이 최대 1개만 겹치도록 설계(두 가지 특징만 알아도 한 명으로 좁혀짐) */
+const ATTRS=[
+ {k:"hair",label:"머리",vals:["빨간 머리","파란 머리","노란 머리","보라 머리"],sw:["#e5484d","#3e8fe0","#f2c94c","#9b59d0"]},
+ {k:"acc",label:"소품",vals:["선글라스","빨간 망토","커다란 모자","금목걸이"]},
+ {k:"hobby",label:"취미",vals:["사진 찍기","기타 치기","퍼즐 맞추기","요리하기"]},
+ {k:"ride",label:"이동 수단",vals:["스쿠터","열기구","스케이트보드","모터보트"]}
+];
+const SUSPECTS=[
+ {n:"여우 레드",e:"🦊",v:[0,0,0,0]},{n:"늑대 블루",e:"🐺",v:[1,1,1,1]},{n:"사자 골드",e:"🦁",v:[2,2,2,2]},{n:"고양이 미아",e:"🐱",v:[3,3,3,3]},
+ {n:"개구리 그린",e:"🐸",v:[0,1,2,3]},{n:"문어 먹물",e:"🐙",v:[1,0,3,2]},{n:"부엉이 밤",e:"🦉",v:[2,3,0,1]},{n:"펭귄 턱시",e:"🐧",v:[3,2,1,0]}
+];
+
+const WIT=[
+ {e:"🧑‍✈️",n:"공항 직원",lead:"탑승권을 확인하다 들었는데요,"},
+ {e:"🧑‍🍳",n:"시장 상인",lead:"가게에 들른 수상한 손님이 중얼거렸어요."},
+ {e:"🧒",n:"동네 아이",lead:"제가 몰래 들었어요!"},
+ {e:"🚕",n:"택시 기사",lead:"손님이 택시에서 이런 말을 했어요."},
+ {e:"📸",n:"사진작가",lead:"사진 찍다가 우연히 들었어요."},
+ {e:"👮",n:"지역 경찰",lead:"순찰 중에 그 사람을 봤어요."},
+ {e:"💁",n:"관광 안내원",lead:"여행 상담을 해 줬는데요,"},
+ {e:"🧓",n:"할머니",lead:"아이고, 그 사람이 이렇게 말하더구먼."}
+];
+
+const CASES=[
+ {id:"globe",title:"사라진 황금 지구본",ic:"🌐",mode:"map",hops:5,unit:"6-1 · 3단원 지구, 대륙 그리고 국가들",
+  desc:"위도·경도, 대륙과 대양, 시차, 국가의 위치와 영토를 단서로 추적해요.",item:"황금 지구본"},
+ {id:"nature",title:"오색 자연 보석 도난 사건",ic:"💎",mode:"nature",hops:5,unit:"6-2 · 1단원 세계의 자연환경",
+  desc:"산지·하천·해안 지형과 6가지 기후, 사람들의 생활 모습이 단서예요.",item:"오색 자연 보석"},
+ {id:"korea",title:"독도에서 마라도까지, 우리나라 영토 수사",ic:"🇰🇷",mode:"korea",hops:5,unit:"6-1 · 3단원 우리나라의 위치와 영토",
+  desc:"우리나라의 위도·경도 범위, 동서남북 끝, 삼면의 바다를 단서로 한반도를 누벼요.",item:"우리나라 영토 두루마리"},
+ {id:"final",title:"괴도 원홍 최종 체포 작전",ic:"🕵️",mode:"all",hops:7,unit:"두 단원 종합 · 7단계",
+  desc:"모든 지식을 총동원! 가장 길고 어려운 최종 추적이에요.",item:"세계 지도 원본"}
+];
+
+/* 현장 조사 퀴즈 (지도서 내용에서) */
+const QUIZ=[
+{m:"korea",q:"우리나라는 어떤 모양의 나라일까요?",o:["삼면이 바다로 둘러싸인 반도 국가","사방이 바다인 섬나라","바다가 없는 내륙 국가","대륙 한가운데 있는 나라"],a:0,w:"우리나라는 삼면이 바다로 둘러싸이고 한 면은 육지에 이어진 반도 국가예요."},
+{m:"korea",q:"우리나라의 위치를 위도·경도로 나타내면 대략 어디일까요?",o:["북위 33°~43°, 동경 124°~132°","남위 33°~43°, 동경 124°~132°","북위 33°~43°, 서경 124°~132°","북위 10°~20°, 동경 100°~110°"],a:0,w:"우리나라는 대략 북위 33°~43°, 동경 124°~132° 사이에 있어요."},
+{m:"korea",q:"우리나라 영토의 가장 동쪽 끝(동경 132° 가까이)에 있는 섬은?",o:["독도","마라도","강화도","거제도"],a:0,w:"독도는 우리나라 영토의 동쪽 끝이에요. 울릉도 가까이에 있고 동해에 있어요."},
+{m:"korea",q:"우리나라 영토의 가장 남쪽 끝(북위 33° 가까이)에 있는 섬은?",o:["마라도","독도","백령도","울릉도"],a:0,w:"마라도는 제주도 남쪽에 있는, 우리나라 영토의 남쪽 끝이에요."},
+{m:"korea",q:"우리나라의 서쪽에 있는 바다는?",o:["황해","동해","남해","북극해"],a:0,w:"우리나라는 동쪽은 동해, 서쪽은 황해, 남쪽은 남해로 둘러싸여 있어요."},
+{m:"korea",q:"울릉도와 독도가 있는 바다는?",o:["동해","황해","남해","인도양"],a:0,w:"울릉도와 독도는 동해에 있어요."},
+{m:"korea",q:"다음 중 우리나라와 가까이 있는 나라가 아닌 것은?",o:["브라질","중국","일본","러시아"],a:0,w:"우리나라 주변에는 중국, 일본, 러시아 등이 있어요. 브라질은 지구 반대편 남아메리카에 있어요."},
+{m:"korea",q:"우리나라가 속한 대륙은?",o:["아시아","유럽","아프리카","오세아니아"],a:0,w:"우리나라는 아시아 대륙의 동쪽에 있는 반도 국가예요."},
+{m:"korea",q:"우리나라는 지구의 어디에 있을까요?",o:["북반구, 본초 자오선의 동쪽","북반구, 본초 자오선의 서쪽","남반구, 본초 자오선의 동쪽","남반구, 본초 자오선의 서쪽"],a:0,w:"북위이므로 적도의 북쪽(북반구), 동경이므로 본초 자오선의 동쪽에 있어요."},
+{m:"map",q:"위도 0°인 선으로, 지구를 북반구와 남반구로 나누는 선은?",o:["적도","본초 자오선","날짜 변경선","북극권"],a:0,w:"위도의 기준은 적도(위도 0°)예요. 적도의 북쪽은 북반구, 남쪽은 남반구예요."},
+{m:"map",q:"경도 0°를 지나는 본초 자오선은 어느 나라 천문대를 지날까요?",o:["영국 그리니치 천문대","미국 나사 천문대","일본 도쿄 천문대","프랑스 파리 천문대"],a:0,w:"1884년 국제 회의에서 영국 런던의 그리니치 천문대를 지나는 선을 경도의 기준(본초 자오선)으로 정했어요."},
+{m:"map",q:"적도를 기준으로 북쪽의 위도를 무엇이라고 할까요?",o:["북위","남위","동경","서경"],a:0,w:"적도 기준 북쪽은 북위, 남쪽은 남위예요. 본초 자오선 기준 동쪽은 동경, 서쪽은 서경이에요."},
+{m:"map",q:"본초 자오선을 기준으로 동쪽의 경도는?",o:["동경","서경","북위","남위"],a:0,w:"본초 자오선의 동쪽은 동경(0°~180°), 서쪽은 서경(0°~180°)이에요. 우리나라는 동경에 있어요."},
+{m:"map",q:"경도가 15° 달라질 때마다 시각은 얼마나 차이 날까요?",o:["1시간","15분","6시간","24시간"],a:0,w:"지구는 24시간 동안 360° 자전하므로 360÷24=15°, 경도 15°마다 1시간씩 시차가 생겨요."},
+{m:"map",q:"우리나라의 표준시는 어느 경선을 기준으로 할까요?",o:["동경 135°","동경 0°","서경 135°","동경 180°"],a:0,w:"우리나라는 일본과 같은 동경 135° 경선의 시각을 표준시로 써요."},
+{m:"map",q:"날짜가 바뀌는 기준으로, 경도 180°를 따라 태평양 한가운데를 지나는 선은?",o:["날짜 변경선","적도","북회귀선","본초 자오선"],a:0,w:"본초 자오선의 정반대편 경도 180°에 날짜 변경선이 있어요. 동쪽에서 서쪽으로 건너면 하루를 더해요."},
+{m:"map",q:"다음 중 세계의 5대양이 아닌 것은?",o:["지중해","태평양","인도양","북극해"],a:0,w:"5대양은 태평양, 대서양, 인도양, 북극해, 남극해예요. 지중해는 대륙 사이에 있는 바다예요."},
+{m:"map",q:"세계에서 가장 넓은 대양은?",o:["태평양","대서양","인도양","북극해"],a:0,w:"태평양이 가장 넓고, 아시아·오세아니아·아메리카 대륙 사이에 있어요."},
+{m:"map",q:"“세계지도는 지구본보다 땅의 모양과 면적을 더 정확하게 나타낸다.” 맞을까요?",o:["X (지구본이 더 가까워요)","O (지도가 더 정확해요)"],a:0,w:"둥근 지구를 평면에 펴면 모양·면적·거리가 왜곡돼요. 지구본이 실제 모습에 가장 가까워요."},
+{m:"map",q:"메르카토르 도법 지도에서 그린란드가 아프리카만큼 커 보이는 까닭은?",o:["고위도로 갈수록 면적이 확대되어서","그린란드가 실제로 아프리카만큼 커서","적도에 가까워서","지도를 잘못 그려서"],a:0,w:"메르카토르 도법은 고위도로 갈수록 위선 간격이 커져 면적이 확대돼요. 그린란드는 실제로는 훨씬 작아요."},
+{m:"map",q:"위도가 높아질수록(적도에서 극으로 갈수록) 기온은 대체로 어떻게 될까요?",o:["낮아져요","높아져요","똑같아요","오르락내리락해요"],a:0,w:"지구가 둥글어 고위도일수록 햇볕을 비스듬히 받아 기온이 낮아져요."},
+{m:"map",q:"영토가 세계에서 가장 넓은 나라는?",o:["러시아","중국","미국","브라질"],a:0,w:"러시아는 유럽과 아시아에 걸쳐 있는, 세계에서 가장 넓은 영토를 가진 나라예요."},
+{m:"map",q:"우리나라의 지구 반대편(대척점)은 어느 대륙 쪽일까요?",o:["남아메리카","오세아니아","아프리카","북아메리카"],a:0,w:"우리나라의 대척점은 남위 38°, 서경 52.5° 부근으로, 남아메리카 우루과이 앞바다예요."},
+{m:"map",q:"다음 중 바다와 맞닿지 않은 ‘내륙 국가’는?",o:["몽골","일본","영국","호주"],a:0,w:"몽골은 바다가 없는 내륙 국가예요. 일본·영국·호주는 바다로 둘러싸여 있어요."},
+{m:"map",q:"아프리카 국가들의 국경선이 직선인 곳이 많은 까닭은?",o:["유럽 나라들이 땅을 나누며 자로 긋듯 경계를 정해서","나라끼리 사이좋게 직선으로 그리기로 해서","지도를 만들기 편해서","강이 직선으로 흘러서"],a:0,w:"과거 유럽 여러 나라가 아프리카를 식민지로 나누며 경계를 직선으로 그어서, 그 흔적이 남아 있어요."},
+{m:"map",q:"우리나라가 12월 겨울일 때, 남반구의 호주는 어떤 계절일까요?",o:["여름","겨울","가을","봄"],a:0,w:"남반구는 북반구와 계절이 반대예요. 12월~2월이 호주의 여름이에요."},
+{m:"map",q:"사방이 바다로 둘러싸인 ‘섬나라’는?",o:["일본","몽골","스위스","네팔"],a:0,w:"일본은 여러 개의 섬으로 이루어진 섬나라예요. 몽골·스위스·네팔은 내륙 국가예요."},
+{m:"map",q:"미국과 인도는 약 13시간의 시차가 있어요. 이걸 이용해 어떻게 일할 수 있을까요?",o:["한쪽이 밤일 때 다른 쪽이 낮에 일해 일을 이어 받아요","시차 때문에 협력할 수 없어요","시계를 멈춰 놓고 일해요","낮에만 모두 일해요"],a:0,w:"미국 실리콘밸리와 인도 벵갈루루는 시차가 커서, 서로 낮과 밤을 이어 받아 일하는 데 활용해요."},
+{m:"nature",q:"알프스 산지에서 소몰이 축제가 발달한 까닭은?",o:["여름에 풀이 자라는 높은 곳으로 소를 몰고 가는 목축 문화가 있어서","소가 너무 많아서","관광객이 소를 좋아해서","겨울에 눈이 안 와서"],a:0,w:"알프스 산지는 여름에 서늘하고 풀이 자라 목동들이 소를 몰고 오르내리며 목축을 해요. 이것이 축제로 이어졌어요."},
+{m:"nature",q:"잉카 문명의 도시 마추픽추가 있는 산맥은?",o:["안데스 산맥","알프스 산맥","히말라야 산맥","로키 산맥"],a:0,w:"마추픽추는 안데스 산맥에 만들어진 잉카 문명의 도시예요. 야마와 알파카도 이 지역에서 길러요."},
+{m:"nature",q:"히말라야 산맥에서 소금이 나는 까닭은?",o:["옛날에 바다였던 곳이 솟아올라 바닷물이 말랐기 때문","산꼭대기에 바다가 있어서","사람들이 소금을 가져다 놓아서","화산에서 소금이 나와서"],a:0,w:"먼 옛날 바다였던 땅이 판의 움직임으로 솟아오르며 바닷물이 마르고 소금이 남았어요."},
+{m:"nature",q:"히말라야 산맥에서 등산객을 안내하는 현지인을 무엇이라 할까요?",o:["셰르파","게르","마사이","이누이트"],a:0,w:"셰르파는 히말라야에 사는 사람들로, 등산객의 짐을 나르고 길을 안내해요."},
+{m:"nature",q:"베트남 메콩강 주변에서 ‘수상시장’이 발달한 까닭은?",o:["강과 수로가 많아 배가 길 역할을 해서","땅이 없어서","바다가 가까워서","눈이 많이 와서"],a:0,w:"강과 수로가 발달한 곳에서는 배로 이동하고 배 위에서 물건을 사고팔아요."},
+{m:"nature",q:"빙하가 깎아 만든 깊고 좁은 바다 골짜기 지형은?",o:["피오르","갯벌","산호초","삼각주"],a:0,w:"피오르는 빙하의 침식으로 만들어진 해안 지형이에요. 노르웨이의 송네 피오르가 유명해요."},
+{m:"nature",q:"산호초 해안은 어떤 곳에서 발달할까요?",o:["따뜻하고 얕은 바다","추운 극지방 바다","높은 산","건조한 사막"],a:0,w:"산호초는 따뜻한 기후의 얕은 바다에서 산호와 산호충의 뼈가 쌓여 만들어져요. 호주의 그레이트배리어리프가 대표예요."},
+{m:"nature",q:"갯벌이 넓게 발달하는 해안은?",o:["밀물과 썰물의 차가 큰 해안","물결이 센 절벽 해안","빙하가 있는 해안","물이 얕고 따뜻한 산호 해안"],a:0,w:"밀물 때는 물에 잠기고 썰물 때는 드러나는 넓고 평탄한 땅이 갯벌이에요."},
+{m:"nature",q:"일 년 내내 덥고 비가 자주 내리며 적도 근처에서 나타나는 기후는?",o:["열대 기후","냉대 기후","한대 기후","온대 기후"],a:0,w:"열대 기후는 적도 근처에서 주로 나타나며 연중 덥고 비가 자주 내려요."},
+{m:"nature",q:"내리는 비(강수량)보다 증발하는 물이 더 많은 기후는?",o:["건조 기후","열대 기후","한대 기후","온대 기후"],a:0,w:"건조 기후는 강수량보다 증발량이 많아 사막과 초원이 나타나요."},
+{m:"nature",q:"눈과 얼음으로 덮여 있고 극지방에 주로 나타나는 기후는?",o:["한대 기후","열대 기후","온대 기후","건조 기후"],a:0,w:"한대 기후는 극지방에 주로 나타나며 매우 춥고 눈과 얼음으로 덮여 있어요."},
+{m:"nature",q:"북반구의 중·고위도에 나타나며, 온대보다 겨울이 더 추운 기후는?",o:["냉대 기후","열대 기후","한대 기후","고산 기후"],a:0,w:"냉대 기후는 북반구 중·고위도에 나타나요. 러시아 시베리아 같은 곳이에요."},
+{m:"nature",q:"“적도 가까이의 높은 산지는 같은 위도의 낮은 땅보다 기온이 낮다.” 맞을까요?",o:["O (맞아요)","X (틀려요)"],a:0,w:"고산 기후는 높은 산지에서 나타나요. 적도 주변이라도 해발 고도가 높으면 더 서늘해요."},
+{m:"nature",q:"갠지스강처럼 큰 강 주변의 넓은 평야에서 주로 기르는 농작물은?",o:["쌀과 밀","커피와 카카오","순록","올리브만"],a:0,w:"큰 강 주변 평야는 물이 풍부하고 땅이 기름져 쌀·밀 같은 농사가 발달해요."},
+{m:"nature",q:"몽골 유목민이 ‘게르’에서 사는 까닭은?",o:["풀을 따라 가축과 함께 옮겨 다니기 쉬워서","추위를 피하려고 땅속에 파서","집 짓는 돌이 너무 많아서","관광객 때문에"],a:0,w:"건조한 초원에서는 풀을 따라 옮겨 다니며 가축을 길러서 접고 옮기기 쉬운 천막집을 써요."},
+{m:"nature",q:"다음 중 기후에 영향을 주는 요인이 아닌 것은?",o:["국기의 색깔","위도","해발 고도","바다와의 거리"],a:0,w:"기후는 위도, 육지와 바다의 영향, 지형, 해발 고도, 해류 등에 따라 달라져요."},
+{m:"nature",q:"관광 산업이 발달하면 나타나는 ‘좋은 점’이 아닌 것은?",o:["쓰레기와 환경 오염이 늘어요","일자리가 생겨요","지역 소득이 늘어요","지역이 널리 알려져요"],a:0,w:"관광은 일자리와 소득을 늘리지만, 환경 오염 같은 부정적 영향도 있어서 균형 있게 생각해야 해요."},
+{m:"nature",q:"더운 지중해 연안 지역의 집이 흰색 벽인 까닭은?",o:["햇빛을 잘 반사해 집 안이 덜 더워지도록","눈이 많이 와서","페인트가 싸서","멀리서 보이게 하려고"],a:0,w:"여름 기온이 높은 지역에서는 흰색 벽이 햇빛을 반사해 집 안의 더위를 줄여 줘요."}
+];
+
+/* 기후 그래프 (월별 기온 ℃ / 강수량 mm) */
+const CHART={
+ 열대:{t:[26,27,27,28,28,27,27,27,27,27,27,26],r:[240,170,190,170,170,150,160,150,170,180,250,260]},
+ 건조:{t:[14,17,22,28,33,36,38,37,34,28,21,15],r:[5,5,5,3,2,0,0,0,0,2,4,6]},
+ 온대:{t:[-2,1,6,13,18,23,26,27,22,15,7,0],r:[20,25,45,65,100,130,330,260,150,50,45,25]},
+ 냉대:{t:[-38,-32,-20,-5,7,15,19,15,6,-9,-27,-36],r:[8,6,5,8,17,30,40,35,22,18,13,9]},
+ 한대:{t:[-3,-8,-18,-24,-27,-28,-30,-30,-27,-20,-9,-3],r:[5,5,5,4,3,3,2,2,3,4,4,5]},
+ 고산:{t:[14,14,14,14,14,14,14,14,14,14,14,14],r:[110,120,150,170,120,50,30,40,90,120,110,100]}
+};
+const CLIM_HINT={열대:"1년 내내 기온이 높고 비가 많아요.",건조:"비가 아주 적고 낮과 여름 기온이 높아요.",온대:"기온 변화가 뚜렷하고 여름에 비가 많아요.",냉대:"겨울이 매우 춥고 여름은 시원해요.",한대:"1년 내내 기온이 아주 낮고 강수량이 적어요.",고산:"1년 내내 기온이 거의 같고 서늘해요."};
+
+/* 짐 싸기 */
+const ITEMS=[
+ {e:"🧥",n:"두꺼운 패딩",c:["한대","냉대"]},{e:"🧤",n:"방한 장갑",c:["한대","냉대"]},{e:"🧣",n:"목도리",c:["한대","냉대","고산"]},
+ {e:"🩳",n:"반팔·반바지",c:["열대","건조"]},{e:"👒",n:"챙 넓은 모자",c:["열대","건조"]},{e:"🕶️",n:"선글라스",c:["건조","한대"]},
+ {e:"☂️",n:"우산",c:["열대","온대"]},{e:"🧴",n:"선크림",c:["열대","건조","고산"]},{e:"🥾",n:"등산화",c:["고산"]},
+ {e:"🧶",n:"두툼한 스웨터",c:["고산"]},{e:"🧥",n:"가벼운 겉옷",c:["온대","고산"]}
+];
+
+/* 지도 (경위도 → 폴리곤, 단순화) */
+const LAND=[
+[[-168,66],[-162,70],[-156,71],[-141,70],[-128,70],[-115,68],[-95,72],[-85,69],[-82,63],[-93,59],[-85,55],[-80,52],[-79,57],[-77,62],[-70,60],[-65,60],[-62,57],[-56,52],[-60,47],[-66,45],[-70,42],[-74,40],[-76,35],[-81,31],[-80,26],[-82,27],[-84,30],[-90,30],[-95,29],[-97,26],[-97,21],[-94,18],[-90,21],[-87,21],[-88,16],[-84,15],[-83,10],[-80,8],[-77,8],[-80,7],[-84,8],[-88,13],[-92,15],[-97,16],[-105,20],[-106,23],[-109,26],[-112,29],[-114,31],[-117,33],[-121,35],[-124,40],[-124,46],[-125,49],[-130,54],[-135,58],[-140,60],[-148,60],[-152,58],[-158,56],[-164,55],[-162,59],[-166,62],[-165,64]],
+[[-73,78],[-60,82],[-30,83],[-20,78],[-20,70],[-30,68],[-42,60],[-50,62],[-55,68],[-60,76]],
+[[-100,73],[-90,76],[-80,74],[-90,70]],
+[[-77,8],[-72,12],[-62,10],[-52,5],[-50,0],[-44,-2],[-35,-5],[-35,-9],[-39,-14],[-41,-22],[-48,-26],[-53,-34],[-58,-38],[-62,-40],[-65,-45],[-68,-50],[-69,-55],[-73,-52],[-75,-47],[-73,-38],[-71,-30],[-70,-18],[-76,-14],[-81,-5],[-80,0],[-78,5]],
+[[-9,37],[-9,43],[-2,43.5],[-1,46],[-4.5,48.5],[2,51],[5,53],[8,54],[9,57],[10,54.5],[14,54],[20,54.5],[22,57],[24,59.5],[30,60],[34,66],[40,67],[44,68],[60,69],[70,73],[80,73],[100,77],[112,74],[130,72],[140,72],[160,70],[170,70],[180,68],[180,65],[170,64],[160,61],[155,59],[143,59],[138,54],[141,52],[140,48],[133,43],[131,43],[129,40],[129,35.5],[127,34.5],[126,37],[125,39.5],[121,39],[118,38.5],[120,36],[122,37],[120,34],[122,30],[120,27],[117,23.5],[110,21],[108,21.5],[106,19],[109,12],[105,9],[103,10],[100,13],[100,8],[103,1.5],[100,4],[98,10],[98,16],[94,17],[92,21],[88,22],[86,20],[80,15],[80,10],[77,8],[73,16],[72,21],[68,24],[62,25],[57,26],[56,27],[52,28],[49,30],[48,29.5],[51,25],[56,25],[56,24],[59,22],[52,16],[45,13],[43,15],[39,21],[35,28],[34,31],[36,36.5],[30,36.3],[27,37],[26,40],[23,40],[22,37],[21,40],[19,42],[14,45],[12,44.5],[16,41],[18,40],[16,38],[12,41.5],[10,44],[6,43],[3,43],[0,39],[-2,37],[-5,36]],
+[[5,58],[5,62],[12,66],[18,70],[26,71],[30,70],[28,66],[24,65],[22,63],[18,60],[16,57],[12,56],[8,58]],
+[[-17,21],[-16,28],[-10,30],[-6,36],[10,37],[11,33],[20,31],[32,31],[34,28],[38,20],[43,12],[51,12],[48,5],[40,-3],[40,-10],[35,-20],[33,-26],[28,-33],[20,-35],[17,-30],[12,-17],[13,-8],[9,-1],[9,4],[5,6],[-4,5],[-8,4],[-13,8],[-17,14]],
+[[44,-25],[49,-15],[50,-12],[44,-17]],
+[[114,-22],[122,-18],[130,-12],[136,-12],[137,-16],[142,-11],[146,-19],[153,-26],[151,-34],[146,-39],[140,-38],[135,-34],[129,-32],[115,-34],[114,-26]],
+[[95,5],[104,-2],[106,-6],[100,-1]],
+[[109,2],[117,7],[119,1],[116,-4],[110,-3]],
+[[105,-6],[114,-8],[114,-7.5],[106,-6.5]],
+[[131,-1],[141,-3],[150,-10],[142,-9],[135,-4]],
+[[130,33],[135,34],[140,35],[141,38],[142,41],[141,45],[145,44],[142,42],[141,40],[139.5,38],[136,37],[132,35.5]],
+[[-5,50],[1,51],[2,53],[-2,56],[-2,58.5],[-5,58.5],[-6,56],[-3,54],[-5,52]],
+[[-10,52],[-6,52],[-6,55],[-10,54]],
+[[-24,64],[-14,64],[-14,66],[-22,66]],
+[[173,-35],[178,-38],[175,-41],[173,-39]],
+[[172,-41],[174,-42],[170,-46],[167,-46]],
+[[-180,-70],[-120,-74],[-60,-65],[-60,-75],[0,-70],[60,-67],[120,-66],[180,-70],[180,-90],[-180,-90]]
+];
+let VIEW="world",VW=720,VH=360,X=lon=>(lon+180)*2,Y=lat=>(90-lat)*2,INV=(x,y)=>({lon:x/2-180,lat:90-y/2});
+function setView(m){
+  if(m==="korea"){VIEW="korea";VW=720;VH=660;X=lo=>(lo-121)*55;Y=la=>(44-la)*55;INV=(x,y)=>({lon:x/55+121,lat:44-y/55})}
+  else{VIEW="world";VW=720;VH=360;X=lo=>(lo+180)*2;Y=la=>(90-la)*2;INV=(x,y)=>({lon:x/2-180,lat:90-y/2})}
+}
+const KLAND=[
+ [[121,44],[134,44],[134,42.7],[131,42.4],[130.7,42.3],[129.8,41.8],[128.3,40.6],[127.6,39.9],[127.5,39.2],[128.6,38.2],[129,37.7],[129.4,37],[129.5,36.1],[129.4,35.5],[129,35.1],[128,34.8],[127.7,34.7],[126.5,34.3],[126.3,34.8],[126.5,35.9],[126.1,36.8],[126.5,37.6],[125.6,37.7],[124.7,37.9],[125.2,38.6],[125.4,39.2],[125,39.6],[124.3,39.9],[123,39.7],[121.7,39],[121.2,40],[121,40.5]],
+ [[121,38.2],[121.6,37.6],[122.6,37.4],[122.4,36.9],[121,36.6]],
+ [[129.6,33.4],[130.9,33.9],[131.7,33.5],[131.9,32],[131,31.2],[130.2,31.2],[129.8,32.7]],
+ [[131,34.4],[132,35.3],[133,35.6],[134,35.7],[134,34.5],[133,34.3],[131.9,33.9]],
+ [[129.2,34.7],[129.4,34.6],[129.5,34.3],[129.3,34.1],[129.1,34.4]],
+ [[126.15,33.45],[126.5,33.55],[126.95,33.45],[126.85,33.25],[126.4,33.2]],
+ [[130.8,37.55],[130.95,37.55],[130.95,37.45],[130.8,37.45]]
+];
+function dirKo(c){const dy=c.lat-HQ.lat,dx=(c.lon-HQ.lon)*Math.cos(rad(HQ.lat));const a=(Math.atan2(dy,dx)*180/Math.PI+360)%360;return ["동","북동","북","북서","서","남서","남","남동"][Math.round(a/45)%8]}
+function poolCities(m){return CITIES.filter(c=>m==="korea"?c.kr:!c.kr)}
+
+/* =========================================================
+   유틸
+   ========================================================= */
+const $=s=>document.querySelector(s);
+const rand=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const rad=x=>x*Math.PI/180;
+function dist(a,b){const R=6371,dLa=rad(b.lat-a.lat),dLo=rad(b.lon-a.lon);const h=Math.sin(dLa/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+const flightH=(a,b)=>Math.max(3,Math.round(dist(a,b)/900)+2);
+const r5=v=>Math.round(v/5)*5;
+const NS=l=>l>=0?"북위":"남위", EW=l=>l>=0?"동경":"서경";
+const DB_KEY="wonhong-detective-v2";
+const CLOUD={url:""};   // 로그인·구글 시트 저장은 사용하지 않아요 (기록은 이 기기에 자동 저장)
+let DB={users:{},last:"",lastCls:""},U=null,UNAME="",UID="";
+function topicOf(q){
+  if(q.m==="korea")return "우리나라 위치·영토";
+  if(q.m==="map"){if(/위도|경도|적도|본초|표준시|날짜|시차|시각|동경|북위|그리니치|계절|반구/.test(q.q))return "위도·경도·시차";if(/대양|대륙/.test(q.q))return "대륙·대양";return "지도·국가·영토"}
+  if(/기후/.test(q.q))return "기후";if(/관광/.test(q.q))return "관광·생활";return "지형·생활";
+}
+function recordTopic(t,ok){if(!U)return;U.topics=U.topics||{};const a=U.topics[t]=U.topics[t]||[0,0];a[1]++;if(ok)a[0]++}
+async function cloud(payload){
+  if(!CLOUD.url)return null;
+  try{const r=await fetch(CLOUD.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});return await r.json()}catch(e){return null}
+}
+const hm=()=>new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+function setSync(t){
+  const b=$("#syncbadge");if(!b)return;
+  if(!U||!t){b.style.display="none";return}
+  b.style.display="block";b.textContent=t;
+}
+let pushT=null,lastJ="",reregTried=false;
+function cloudSoon(){if(!CLOUD.url||!U)return;clearTimeout(pushT);setSync("☁️ 저장 대기 중…");pushT=setTimeout(cloudPush,2500)}
+async function cloudPush(){
+  if(!CLOUD.url||!U)return;clearTimeout(pushT);setSync("☁️ 저장 중…");
+  const save=()=>cloud({a:"save",cls:U.cls||"",name:UNAME,pw:U.pw,data:U});
+  let res=await save();
+  if(res&&!res.ok&&/등록되지 않은/.test(res.err||"")&&!reregTried){   // 시트에서 줄이 지워졌다면 한 번만 자동 재등록
+    reregTried=true;
+    const r2=await cloud({a:"register",again:true,cls:U.cls||"",name:UNAME,pw:U.pw});
+    if(r2&&r2.ok)res=await save();
+  }
+  if(res&&res.ok)reregTried=false;
+  setSync(res&&res.ok?"☁️ 클라우드에 저장됨 "+hm():res&&res.err?"⚠️ "+res.err:"📴 오프라인: 이 기기에만 저장돼요 (연결되면 자동 저장)");
+}
+addEventListener("visibilitychange",()=>{if(document.hidden&&U&&CLOUD.url)cloudPush()});
+function dbLoad(){try{const d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.users)DB=d}catch(e){}}
+function dbSave(){try{localStorage.setItem(DB_KEY,JSON.stringify(DB))}catch(e){}}
+function newUser(pwh){return {pw:pwh,cls:"",topics:{},upd:0,wins:{},best:{},coins:1,dex:[],quizRight:0,quizTotal:0,game:null,created:Date.now()}}
+/* 진행 상황 직렬화 */
+function serialize(){
+  const R=S.round;
+  return {screen:S.screen,case:S.case.id,route:S.route.map(c=>c.id),stop:S.stop,budget:S.budget,hours:S.hours,coins:S.coins,culprit:S.culprit,traits:S.traits,attrOrder:S.attrOrder,notes:S.notes,
+   learned:S.learned.map(x=>x.quiz?x:{c:x.id}),usedQ:[...S.usedQ],quizRight:S.quizRight,quizTotal:S.quizTotal,wrongSus:S.wrongSus,mistakes:S.mistakes,visited:S.visited.map(c=>c.id),
+   round:R?{clues:R.clues,spoken:R.spoken,wit:R.wit.map(w=>WIT.indexOf(w)),tickets:R.tickets.map(c=>c.id),wrong:R.wrong,mini:R.mini,extra:R.extra,attr:R.attr,gone:R.gone}:null};
+}
+const cityById=id=>CITIES.find(c=>c.id===id);
+function deserialize(d){
+  const R=d.round;
+  return {screen:d.screen,case:CASES.find(c=>c.id===d.case),route:d.route.map(cityById),stop:d.stop,budget:d.budget,hours:d.hours,coins:d.coins,culprit:d.culprit,traits:d.traits,attrOrder:d.attrOrder,notes:d.notes,
+   learned:d.learned.map(x=>x.quiz?x:cityById(x.c)),usedQ:new Set(d.usedQ),quizRight:d.quizRight,quizTotal:d.quizTotal,wrongSus:d.wrongSus,mistakes:d.mistakes,visited:d.visited.map(cityById),
+   round:R?{clues:R.clues,spoken:R.spoken,wit:R.wit.map(i=>WIT[i]),tickets:R.tickets.map(cityById),wrong:R.wrong,mini:R.mini,extra:R.extra,attr:R.attr,gone:R.gone}:null};
+}
+function autosave(){
+  if(!U)return;
+  if(S&&(S.screen==="game"||S.screen==="brief"))U.game=serialize();
+  else if(S&&S.screen==="end"){U.game=null;U.coins=Math.max(1,S.coins)}
+  if(S&&S.visited)U.dex=[...new Set([...(U.dex||[]),...S.visited.map(c=>c.id)])];
+  const prev=U.upd;delete U.upd;const j=JSON.stringify(U);
+  if(j!==lastJ){lastJ=j;U.upd=Date.now();dbSave();if(CLOUD.url)cloudSoon();else setSync("💾 이 기기에 저장됨")}else U.upd=prev;
+}
+function resumeGame(){S=deserialize(U.game);setView(S.case.mode);sfx.click();render()}
+function exportSave(){
+  const blob=new Blob([JSON.stringify({name:"guest",data:U})],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="탐정수첩.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function importSave(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.data||typeof d.data!=="object")throw 0;
+    if(!confirm("지금 기록을 불러온 기록으로 바꿀까요?"))return;
+    DB.users.guest=d.data;U=DB.users.guest;S=null;lastJ="";dbSave();closeModal();render();alert("기록을 불러왔어요!")}catch(e){alert("올바른 저장 파일이 아니에요.")}};
+  r.readAsText(f);
+}
+let AC=null,muted=false;
+function tone(f,d=.12,type="sine",t0=0,vol=.07){if(muted)return;try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.value=vol;o.connect(g);g.connect(AC.destination);const t=AC.currentTime+t0;o.start(t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.stop(t+d+.02)}catch(e){}}
+const sfx={ok(){tone(660,.1,"triangle");tone(880,.16,"triangle",.1)},bad(){tone(180,.28,"sawtooth",0,.05)},click(){tone(520,.05,"square",0,.025)},win(){[523,659,784,1047].forEach((f,i)=>tone(f,.22,"triangle",i*.12))},fly(){tone(300,.5,"sine",0,.04)}};
+
+/* =========================================================
+   지도 SVG
+   ========================================================= */
+function marksSVG(marks,mini){
+  let s="";const halo='paint-order="stroke" stroke="#0b2540" stroke-width="2.4" stroke-linejoin="round"';
+  marks.forEach(m=>{
+    const x=X(m.lon),y=Y(m.lat);
+    if(m.type==="cur")s+=`<circle cx="${x}" cy="${y}" r="9" fill="none" stroke="#ffc83d" stroke-width="2"><animate attributeName="r" values="5;13;5" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.2;1" dur="1.4s" repeatCount="indefinite"/></circle><circle cx="${x}" cy="${y}" r="4.5" fill="#ffc83d" stroke="#2a1f00" stroke-width="1.2"/>`;
+    else if(m.type==="done")s+=`<circle cx="${x}" cy="${y}" r="4" fill="#4fd18b" stroke="#052" stroke-width="1"/>`;
+    else if(m.type==="cand")s+=`<circle cx="${x}" cy="${y}" r="5" fill="#fff" stroke="#e5484d" stroke-width="2"/>`;
+    else if(m.type==="candx")s+=`<circle cx="${x}" cy="${y}" r="4" fill="#888" stroke="#444" stroke-width="1"/>`;
+    else if(m.type==="target")s+=`<g transform="translate(${x},${y})"><circle r="8" fill="none" stroke="#4fd18b" stroke-width="2.4"/><path d="M-12 0H12M0 -12V12" stroke="#4fd18b" stroke-width="1.6"/></g>`;
+    else if(m.type==="click")s+=`<circle cx="${x}" cy="${y}" r="5" fill="#ff5d6c" stroke="#fff" stroke-width="1.4"/>`;
+    if(m.label)s+=`<text x="${x+8}" y="${y-6}" font-size="${mini?9:10.5}" font-weight="800" fill="#fff" ${halo} stroke-width="3">${m.label}</text>`;
+  });
+  return s;
+}
+function koreaMapSVG(opt={}){
+  const {mini=false,marks=[],id="gmap"}=opt;
+  const halo='paint-order="stroke" stroke="#0b2540" stroke-width="2.4" stroke-linejoin="round"';
+  let s=`<svg class="map" id="${id}" viewBox="0 0 ${VW} ${VH}" data-mini="${mini?1:0}"><defs><linearGradient id="oc${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a73ad"/><stop offset="1" stop-color="#17466f"/></linearGradient></defs><rect width="${VW}" height="${VH}" fill="url(#oc${id})"/>`;
+  for(let lo=122;lo<=134;lo++)s+=`<line x1="${X(lo)}" y1="0" x2="${X(lo)}" y2="${VH}" stroke="#fff" stroke-opacity="${lo%2===0?.3:.1}" stroke-width="${lo%2===0?1:.6}"/>`;
+  for(let la=32;la<=44;la++)s+=`<line x1="0" y1="${Y(la)}" x2="${VW}" y2="${Y(la)}" stroke="#fff" stroke-opacity="${la%2?.3:.1}" stroke-width="${la%2?1:.6}"/>`;
+  KLAND.forEach(p=>{s+=`<path d="M${p.map(q=>X(q[0])+","+Y(q[1])).join("L")}Z" fill="#e6dba9" stroke="#b9ab6d" stroke-width="1"/>`});
+  s+=`<rect x="${X(124)}" y="${Y(43)}" width="${X(132)-X(124)}" height="${Y(33)-Y(43)}" fill="none" stroke="#ffc83d" stroke-width="2" stroke-dasharray="9 5"/>`;
+  if(!mini)s+=`<text x="${X(124)+6}" y="${Y(43)+14}" font-size="11" font-weight="800" fill="#ffd96b" ${halo}>우리나라의 위치: 북위 33°~43°, 동경 124°~132°</text>`;
+  for(let la=33;la<=43;la+=2)s+=`<text x="4" y="${Y(la)-3}" font-size="10" fill="#fff" ${halo}>북위 ${la}°</text>`;
+  for(let lo=124;lo<=132;lo+=2)s+=`<text x="${X(lo)+3}" y="${VH-6}" font-size="10" fill="#fff" ${halo}>동경 ${lo}°</text>`;
+  [["황해",122.6,36.2],["동해",132.3,39.6],["남해",128.4,33.2],["중국",122.6,41.6],["러시아",132.6,43.5],["일본",132.4,35.1],["북한",127,40.4],["대한민국",127.9,36.5],["울릉도",130.9,37.9]].forEach(o=>{s+=`<text x="${X(o[1])}" y="${Y(o[2])}" font-size="${/해$/.test(o[0])?14:11}" fill="${/해$/.test(o[0])?"#cfe9ff":"#5b4a10"}" fill-opacity="${/해$/.test(o[0])?.8:.8}" text-anchor="middle" font-weight="700" ${/해$/.test(o[0])?'font-style="italic"':""}>${o[0]}</text>`});
+  s+=marksSVG(marks,mini);
+  if(!mini)s+=`<g id="cross" style="display:none;pointer-events:none"><line id="cx" y1="0" y2="${VH}" stroke="#fff" stroke-opacity=".7" stroke-dasharray="2 2"/><line id="cy" x1="0" x2="${VW}" stroke="#fff" stroke-opacity=".7" stroke-dasharray="2 2"/></g>`;
+  s+=`<text id="plane" font-size="17" style="display:none" text-anchor="middle">✈️</text></svg>`;
+  return s;
+}
+function mapSVG(opt={}){
+  if(VIEW==="korea")return koreaMapSVG(opt);
+  const {mini=false,marks=[],id="gmap"}=opt;
+  let s=`<svg class="map" id="${id}" viewBox="0 0 720 360" data-mini="${mini?1:0}">
+  <defs><linearGradient id="oc${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a73ad"/><stop offset="1" stop-color="#17466f"/></linearGradient></defs>
+  <rect width="720" height="360" fill="url(#oc${id})"/>`;
+  for(let lo=-150;lo<=150;lo+=30)s+=`<line x1="${X(lo)}" y1="0" x2="${X(lo)}" y2="360" stroke="#fff" stroke-opacity="${lo===0?.0:.18}" stroke-width=".7"/>`;
+  for(let la=-60;la<=60;la+=30)s+=`<line x1="0" y1="${Y(la)}" x2="720" y2="${Y(la)}" stroke="#fff" stroke-opacity="${la===0?0:.18}" stroke-width=".7"/>`;
+  LAND.forEach(p=>{s+=`<path d="M${p.map(q=>X(q[0])+","+Y(q[1])).join("L")}Z" fill="#e6dba9" stroke="#b9ab6d" stroke-width=".8"/>`});
+  // 적도, 본초 자오선, 날짜 변경선
+  s+=`<line x1="0" y1="${Y(0)}" x2="720" y2="${Y(0)}" stroke="#ff5d6c" stroke-width="1.6" stroke-dasharray="6 3"/>
+      <line x1="${X(0)}" y1="0" x2="${X(0)}" y2="360" stroke="#7dff9b" stroke-width="1.6" stroke-dasharray="6 3"/>
+      <line x1="${X(179.5)}" y1="0" x2="${X(179.5)}" y2="360" stroke="#c9a6ff" stroke-width="1.4" stroke-dasharray="3 3"/>`;
+  const halo='paint-order="stroke" stroke="#0b2540" stroke-width="2.4" stroke-linejoin="round"';
+  s+=`<text x="6" y="${Y(0)-3}" font-size="9" fill="#ffb3bb" ${halo}>적도 0°</text>
+      <text x="${X(0)+3}" y="10" font-size="9" fill="#9dffb3" ${halo}>본초 자오선 0°</text>
+      <text x="${X(179.5)-62}" y="10" font-size="9" fill="#d9c2ff" ${halo}>날짜 변경선 180°</text>`;
+  for(let la=-60;la<=60;la+=30)if(la!==0)s+=`<text x="4" y="${Y(la)-2}" font-size="8" fill="#fff" fill-opacity=".85" ${halo}>${NS(la)} ${Math.abs(la)}°</text>`;
+  for(let lo=-150;lo<=150;lo+=30)if(lo!==0)s+=`<text x="${X(lo)+2}" y="352" font-size="8" fill="#fff" fill-opacity=".85" ${halo}>${EW(lo)} ${Math.abs(lo)}°</text>`;
+  if(!mini){
+    [["태평양",-150,-5],["태평양",160,15],["대서양",-35,15],["인도양",78,-22],["북극해",-10,84],["남극해",30,-78]].forEach(o=>{s+=`<text x="${X(o[1])}" y="${Y(o[2])}" font-size="11" fill="#cfe9ff" fill-opacity=".75" text-anchor="middle" font-style="italic">${o[0]}</text>`});
+    [["아시아",90,45],["유럽",18,52],["아프리카",20,5],["북아메리카",-100,45],["남아메리카",-60,-15],["오세아니아",134,-26],["남극",0,-82]].forEach(o=>{s+=`<text x="${X(o[1])}" y="${Y(o[2])}" font-size="10" fill="#5b4a10" fill-opacity=".7" text-anchor="middle" font-weight="700">${o[0]}</text>`});
+  }
+  s+=marksSVG(marks,mini);
+  if(!mini)s+=`<g id="cross" style="display:none;pointer-events:none"><line id="cx" y1="0" y2="${VH}" stroke="#fff" stroke-opacity=".7" stroke-dasharray="2 2"/><line id="cy" x1="0" x2="${VW}" stroke="#fff" stroke-opacity=".7" stroke-dasharray="2 2"/></g>`;
+  s+=`<text id="plane" font-size="17" style="display:none" text-anchor="middle">✈️</text></svg>`;
+  return s;
+}
+function svgPoint(svg,ev){
+  const r=svg.getBoundingClientRect();const t=ev.touches?ev.touches[0]:(ev.changedTouches?ev.changedTouches[0]:ev);
+  const x=(t.clientX-r.left)/r.width*VW,y=(t.clientY-r.top)/r.height*VH;
+  const g=INV(x,y);return {lon:g.lon,lat:g.lat,x,y};
+}
+function bindMapHover(){
+  const svg=$("#gmap");if(!svg)return;
+  const ro=$("#readout");
+  const mv=ev=>{const p=svgPoint(svg,ev);if(p.lat<-90||p.lat>90)return;const c=svg.querySelector("#cross");c.style.display="block";svg.querySelector("#cx").setAttribute("x1",p.x);svg.querySelector("#cx").setAttribute("x2",p.x);svg.querySelector("#cy").setAttribute("y1",p.y);svg.querySelector("#cy").setAttribute("y2",p.y);
+    const la=Math.round(p.lat),lo=Math.round(p.lon);ro.textContent=`📍 ${la===0?"적도(위도 0°)":NS(la)+" "+Math.abs(la)+"°"}, ${lo===0?"본초 자오선(경도 0°)":EW(lo)+" "+Math.abs(lo)+"°"}`};
+  svg.addEventListener("mousemove",mv);svg.addEventListener("touchmove",mv,{passive:true});svg.addEventListener("touchstart",mv,{passive:true});
+  svg.addEventListener("mouseleave",()=>{svg.querySelector("#cross").style.display="none";ro.textContent="지도 위를 움직여 위도·경도를 확인해 보세요 🧭"});
+}
+function flyPlane(a,b,ms=1100){
+  return new Promise(res=>{
+    const svg=$("#gmap"),pl=svg&&svg.querySelector("#plane");if(!pl){res();return}
+    setTimeout(()=>{pl.style.display="none";res()},ms+400);
+    sfx.fly();const x1=X(a.lon),y1=Y(a.lat),x2=X(b.lon),y2=Y(b.lat);
+    const ang=Math.atan2(y2-y1,x2-x1)*180/Math.PI+45;pl.style.display="block";const t0=performance.now();
+    const step=t=>{let k=Math.min(1,(t-t0)/ms);const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;const x=x1+(x2-x1)*e,y=y1+(y2-y1)*e-Math.sin(Math.PI*e)*14;
+      pl.setAttribute("transform",`translate(${x},${y}) rotate(${ang})`);if(k<1)requestAnimationFrame(step);else{pl.style.display="none";res()}};
+    requestAnimationFrame(step);
+  });
+}
+
+/* =========================================================
+   게임 상태
+   ========================================================= */
+let S=null;
+const curCity=()=>S.stop===0?HQ:S.route[S.stop-1];
+function pickRoute(n,mode){
+  const kr=mode==="korea";
+  for(let tries=0;tries<200;tries++){
+    const pool=shuffle(poolCities(mode));const r=[];let prev=HQ;
+    for(const c of pool){
+      if(r.length===n)break;
+      if(kr||(dist(prev,c)>2500&&(!r.length||r[r.length-1].country!==c.country))){r.push(c);prev=c}
+    }
+    if(r.length===n)return r;
+  }
+  return shuffle(poolCities(mode)).slice(0,n);
+}
+function startCase(id){
+  const C=CASES.find(c=>c.id===id);setView(C.mode);const route=pickRoute(C.hops,C.mode);
+  let h=0,p=HQ;route.forEach(c=>{h+=flightH(p,c);p=c});
+  const budget=Math.ceil(h*1.6+30);
+  S={screen:"brief",case:C,route,stop:0,budget,hours:budget,coins:Math.max(1,U.coins||1),culprit:Math.floor(Math.random()*8),
+     traits:{},attrOrder:shuffle([0,1,2,3]),notes:[],learned:[],usedQ:new Set(),quizRight:0,quizTotal:0,wrongSus:[],mistakes:0,visited:[]};
+  buildRound();render();
+}
+function geoClues(c){
+  const la=r5(Math.abs(c.lat)),lo=r5(Math.abs(c.lon));
+  const lat=la===0?"적도(위도 0°) 바로 근처":`${NS(c.lat)} ${la}° 쯤`;
+  const lon=lo===0?"본초 자오선(경도 0°) 바로 근처":`${EW(c.lon)} ${lo}° 쯤`;
+  const h=Math.round(c.lon/15);
+  const g3=h===0?"런던과 시각이 거의 같아요. (경도 15°마다 1시간 차이!)":`영국 런던보다 시각이 약 ${Math.abs(h)}시간 ${h>0?"빨라요":"늦어요"}. (경도 15°마다 1시간 차이!)`;
+  return [
+   `위치는 ${lat}, ${lon}이에요`,
+   `${c.cont} 대륙에 있고, ${c.ocean}`,
+   g3,
+   `${c.lat>=0?"적도의 북쪽(북반구)":"적도의 남쪽(남반구)"}이고, 본초 자오선의 ${c.lon>=0?"동쪽":"서쪽"}에 있어요`
+  ];
+}
+const climClue=c=>`기후는 ‘${c.climate} 기후’래요. ${CLIM_DESC[c.climate]} 곳이에요`;
+function makeClues(c,mode){
+  const g=shuffle(geoClues(c)),life=rand([...c.life,...c.land]);
+  const mk=(kind,text)=>({kind,text});
+  if(mode==="korea")return [mk("geo",`서울에서 보면 ${dirKo(c)}쪽에 있어요. (방위를 지도에서 확인해요!)`),mk("geo",rand([`위치는 대략 북위 ${Math.round(c.lat)}°, 동경 ${Math.round(c.lon)}° 쯤이에요`,c.ocean])),mk("life",rand([...c.nat,...c.life,...c.land]))];
+  if(mode==="map")return [mk("geo",g[0]),mk("geo",g[1]),mk("life",life)];
+  if(mode==="nature")return [mk("nat",c.nat[0]),mk("nat",climClue(c)),mk("life",rand(c.life))];
+  return [mk("geo",g[0]),mk("nat",rand(c.nat)),mk("life",life)];
+}
+function buildRound(){
+  const next=S.route[S.stop],cur=curCity();
+  const used=new Set([next.id,cur.id,...S.route.slice(0,S.stop).map(c=>c.id)]);
+  const base=poolCities(S.case.mode),kr=S.case.mode==="korea";
+  let pool=base.filter(c=>!used.has(c.id)&&(kr?(dirKo(c)!==dirKo(next)||c.sea!==next.sea):dist(next,c)>3000));
+  if(S.case.mode==="nature")pool=pool.filter(c=>c.climate!==next.climate||c.terrain!==next.terrain);
+  if(pool.length<2)pool=base.filter(c=>!used.has(c.id));
+  const ds=shuffle(pool).slice(0,2);
+  const attr=S.stop<4?S.attrOrder[S.stop]:Math.floor(Math.random()*4);
+  S.round={clues:makeClues(next,S.case.mode),spoken:[false,false,false],wit:shuffle(WIT).slice(0,3),tickets:shuffle([next,...ds]),wrong:[],mini:false,extra:null,attr,gone:null};
+}
+function spend(h){S.hours-=h;if(S.hours<=0){S.hours=0;S.screen="end";S.result="time";return true}return false}
+function gain(h){S.hours=Math.min(S.budget,S.hours+h)}
+
+/* =========================================================
+   화면 그리기
+   ========================================================= */
+function render(){
+  const app=$("#app");
+  autosave();
+  if(!S||S.screen==="title"){app.innerHTML=titleHTML();return}
+  if(S.screen==="brief"){app.innerHTML=briefHTML();return}
+  if(S.screen==="end"){app.innerHTML=endHTML();if(S.result==="win")confetti();return}
+  app.innerHTML=gameHTML();bindMapHover();
+}
+function rankTitle(w){return w>=8?"전설의 탐정":w>=5?"수석 탐정":w>=3?"정식 탐정":w>=1?"초급 탐정":"견습 탐정"}
+function titleHTML(){
+  const sv=U,wins=Object.values(sv.wins||{}).reduce((a,b)=>a+b,0),g=U.game,gc=g&&CASES.find(c=>c.id===g.case);
+  return `<div class="title"><div class="globe">🌍</div><h1>지구촌 <span>탐정단</span></h1>
+  <p>괴도 <b>원홍</b>이 세계를 누비며 보물을 훔쳤어요!<br>위도·경도와 세계의 자연환경 지식으로 쫓아가 체포하세요.</p>
+  <div class="rankbar" style="margin-top:14px"><span class="chip">🎖️ 현재 계급: <b>${rankTitle(wins)}</b></span><span class="chip">✅ 해결한 사건: ${wins}건</span><span class="chip">🪙 코인 ${U.coins||1}</span><span class="chip" style="cursor:pointer" onclick="showDex()">🗺️ 도시 도감 ${(U.dex||[]).length}/${CITIES.length}</span></div>
+  <div class="small" style="margin-top:8px">💾 진행 상황은 이 기기에 자동으로 저장돼요.</div></div>
+  ${gc?`<div class="card" style="max-width:640px;margin:18px auto 0;text-align:center;border:2px solid var(--gold)"><div class="small">💾 저장된 수사가 있어요</div><h3 style="margin:4px 0">${gc.ic} ${gc.title}</h3><div class="small">${g.stop}/${g.route.length}단계 · 남은 시간 ${g.hours}시간 · 🪙${g.coins}</div><div class="row" style="justify-content:center"><button class="btn" onclick="resumeGame()">▶ 이어하기</button></div></div>`:""}
+  <div class="cases">${CASES.map(c=>{const b=(sv.best||{})[c.id];return `<div class="card case" onclick="sfx.click();startCase('${c.id}')"><div class="ic">${c.ic}</div><span class="unit">${c.unit}</span><h3>${c.title}</h3><div class="small">${c.desc}</div><div class="stars">${b?"⭐".repeat(b):"☆☆☆"}</div></div>`}).join("")}</div>
+  <div style="text-align:center"><button class="btn ghost" onclick="showHow()">📖 게임 방법</button> <button class="btn ghost" onclick="toggleMute()">${muted?"🔇 소리 꺼짐":"🔊 소리 켜짐"}</button> <button class="btn ghost" onclick="showProfile()">💾 내 기록</button></div>`;
+}
+function showProfile(){
+  showModal(`<h2>💾 내 기록</h2><p class="small" style="line-height:1.7">수사 진행 상황과 별점, 도감은 <b>이 기기(브라우저)에 자동으로 저장</b>돼요. 창을 닫았다가 다시 열어도 ‘이어하기’로 계속할 수 있어요.<br>다른 컴퓨터로 옮기려면 저장 파일을 내보냈다가 불러오세요.</p>
+   <div class="row" style="justify-content:flex-start"><button class="btn ghost sm" onclick="exportSave()">💾 저장 파일 내보내기</button>
+   <label class="btn ghost sm" style="cursor:pointer">📂 불러오기<input type="file" accept=".json" hidden onchange="importSave(this)"></label></div>
+   <div class="row"><button class="btn ghost sm" onclick="if(confirm('정말 모든 기록을 지울까요? 되돌릴 수 없어요.')){DB.users.guest=newUser('');U=DB.users.guest;S=null;lastJ='';dbSave();closeModal();render()}" style="color:#ff9aa4">🗑️ 기록 지우기</button><button class="btn" onclick="closeModal()">닫기</button></div>`);
+}
+function showDex(){
+  const d=new Set(U.dex||[]);
+  showModal(`<h2>🗺️ 도시 도감 (${d.size}/${CITIES.length})</h2><p class="small">수사로 직접 도착한 도시가 채워져요.</p>
+   <div class="recap">${CITIES.map(c=>d.has(c.id)?`<div>${c.e} <b>${c.name} (${c.country})</b><br>${c.fact}</div>`:`<div style="opacity:.4">❓ 아직 가 보지 못한 곳</div>`).join("")}</div>
+   <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`);
+}
+function toggleMute(){muted=!muted;render()}
+function showHow(){
+  showModal(`<h2>📖 게임 방법</h2><ol class="notes">
+  <li><b>목격자와 대화</b>해서 괴도가 다음에 갈 곳의 <b>단서</b>를 모아요. (2명 이상 만나야 비행기표가 열려요)</li>
+  <li>단서를 지도의 <b>위도·경도 눈금</b>, 대륙·대양, 지형·기후 지식과 맞춰 보고 <b>3장의 비행기표 중 정답</b>을 골라요.</li>
+  <li>틀린 곳으로 가면 <b>시간(⏱️)이 줄어요.</b> 시간이 0이 되면 괴도를 놓쳐요!</li>
+  <li><b>현장 조사</b> 미니게임을 성공하면 시간(+3시간)과 <b>코인 🪙</b>을 얻어요. 코인으로 <b>🔭 오답 하나 지우기</b>, <b>📞 단서 하나 더</b>를 쓸 수 있어요.</li>
+  <li>목격자는 <b>용의자의 특징</b>도 알려 줘요. 마지막 도시에서 특징에 맞는 용의자에게 <b>체포 영장</b>을 발부하세요!</li></ol>
+  <div class="row"><button class="btn" onclick="closeModal()">알겠어요!</button></div>`);
+}
+function briefHTML(){
+  const C=S.case;
+  return `<div class="card" style="max-width:720px;margin:30px auto;text-align:center">
+  <div style="font-size:64px">🧭</div><h2>${C.title}</h2>
+  <p style="line-height:1.8;font-size:17px;text-align:left">
+  <b>나침반 박사:</b> “탐정, 큰일 났네! 괴도 <b>원홍</b>의 노맵스단이 <b>${C.item}</b>을(를) 훔쳐 달아났어!<br>
+  범인은 ${C.hops}개 도시를 거쳐 도망칠 거야. 목격자들의 단서를 잘 듣고 뒤쫓게.<br>
+  <b>제한 시간은 ${S.budget}시간!</b> 잘못된 비행기를 타면 시간을 잃으니 신중하게!”</p>
+  <div class="row" style="justify-content:center"><button class="btn ghost" onclick="S=null;render()">← 사건 목록</button><button class="btn" onclick="S.screen='game';render()">수사 시작! 🕵️</button></div></div>`;
+}
+function traitText(){return ATTRS.map((a,i)=>S.traits[i]!==undefined?`<span>${a.label}: <b>${a.vals[S.traits[i]]}</b></span>`:`<span style="opacity:.5">${a.label}: ?</span>`).join("")}
+function susOK(sp){return Object.keys(S.traits).every(k=>sp.v[k]===S.traits[k])}
+function gameHTML(){
+  const n=S.route.length,pct=Math.max(0,S.hours/S.budget*100),cur=curCity(),arrest=S.stop===n;
+  const trail=S.route.map((c,i)=>`<b class="${i<S.stop?"done":i===S.stop?"now":""}">${i<S.stop?"✓":i+1}</b>`).join("");
+  const marks=[];
+  S.route.slice(0,S.stop).forEach(c=>marks.push({lat:c.lat,lon:c.lon,type:"done"}));
+  if(S.stop>0)marks.push({lat:HQ.lat,lon:HQ.lon,type:"done"});
+  marks.push({lat:cur.lat,lon:cur.lon,type:"cur",label:cur.name});
+  if(!arrest&&S.round.spoken.filter(Boolean).length>=2)S.round.tickets.forEach(t=>marks.push({lat:t.lat,lon:t.lon,type:S.round.wrong.includes(t.id)||S.round.gone===t.id?"candx":"cand",label:t.name}));
+  return `<div class="hud"><div class="name">${S.case.ic} ${S.case.title}</div>
+   <div class="timebox"><div class="small">⏱️ 남은 시간 <b style="color:var(--ink)">${S.hours}</b> / ${S.budget}시간</div><div class="timebar ${pct<30?"low":""}"><i style="width:${pct}%"></i></div></div>
+   <div class="trail" title="수사 단계">${trail}</div>
+   <span class="chip">🪙 ${S.coins}</span>
+   <button class="btn ghost sm" onclick="showNotes()">📒 수첩</button>
+   <button class="btn ghost sm" onclick="toggleMute()">${muted?"🔇":"🔊"}</button>
+   <button class="btn ghost sm" onclick="if(confirm('수사를 잠시 멈추고 처음 화면으로 갈까요? (진행 상황은 저장돼요)')){autosave();S=null;render()}">✕</button></div>
+  <div class="main"><section class="card mapcard">${mapSVG({marks})}<div class="readout" id="readout">지도 위를 움직여 위도·경도를 확인해 보세요 🧭</div></section>
+  <section class="card panel" id="panel">${arrest?arrestHTML():clueHTML(cur)}</section></div>`;
+}
+function clueHTML(cur){
+  const R=S.round,heard=R.spoken.filter(Boolean).length;
+  const wits=R.wit.map((w,i)=>{
+    if(!R.spoken[i])return `<div class="wit"><div class="face">${w.e}</div><div style="flex:1"><div class="who">${w.n}</div><button class="btn sm" onclick="talk(${i})">말 걸기 💬</button></div></div>`;
+    let t=`${w.lead}<br>“<em>${R.clues[i].text}</em>”`;
+    if(i===2)t+=`<br>🔎 수상한 사람의 <b>${ATTRS[R.attr].label}</b>: <em>${ATTRS[R.attr].vals[culpritV(R.attr)]}</em>`;
+    return `<div class="wit"><div class="face">${w.e}</div><div><div class="who">${w.n}</div><div class="bubble">${t}</div></div></div>`;
+  }).join("");
+  const extra=R.extra?`<div class="wit" style="border:1px solid var(--gold)"><div class="face">📞</div><div><div class="who">정보원 (전화)</div><div class="bubble">“추가 정보예요! <em>${R.extra}</em>”</div></div></div>`:"";
+  const tickets=heard>=2?`<div class="tickets">${R.tickets.map((t,i)=>{const x=R.wrong.includes(t.id)||R.gone===t.id;return `<button class="ticket ${x?"x":""}" onclick="pickTicket(${i})"><span>✈️ ${t.name}<small>${t.country}</small></span><span>${flightH(cur,t)}시간</span></button>`}).join("")}</div>`:`<div class="lock">🔒 목격자를 <b>2명 이상</b> 만나면 비행기표가 열려요 (${heard}/2)</div>`;
+  const tr=`<div class="traitchips">${traitText()}</div>`;
+  return `<div class="loc"><div class="scene">${cur.e}</div><div><div class="small">현재 위치 · 수사 ${S.stop+1}/${S.route.length}단계</div><h2>${cur.name}</h2><div class="small">${cur.country} · ${cur.cont}</div></div></div>
+  <h3>🗣️ 목격자 인터뷰</h3><div class="wits">${wits}${extra}</div>
+  <div class="actions">
+   <button class="btn sm ${R.mini?"":"glow"}" ${R.mini?"disabled":""} onclick="startMini()">🔍 현장 조사 (성공 시 +3시간·🪙)</button>
+   <button class="btn ghost sm" ${S.coins<1||R.extra||heard<1?"disabled":""} onclick="useExtra()">📞 단서 더 듣기 (🪙1)</button>
+   <button class="btn ghost sm" ${S.coins<1||heard<2||R.gone||R.tickets.filter(t=>!R.wrong.includes(t.id)).length<3?"disabled":""} onclick="useScope()">🔭 오답 하나 지우기 (🪙1)</button>
+  </div>
+  <h3>✈️ 다음 목적지는? <span class="small">(틀리면 -6시간)</span></h3>${tickets}
+  <h3>🔎 지금까지 알아낸 용의자 특징</h3>${tr}`;
+}
+function arrestHTML(){
+  const cur=curCity();
+  return `<div class="loc"><div class="scene">${cur.e}</div><div><div class="small">마지막 도시 · 범인이 숨어 있어요!</div><h2>${cur.name}</h2><div class="small">${cur.country} · ${cur.cont}</div></div></div>
+  <h3>📜 체포 영장 발부</h3><div class="small">수집한 특징에 맞는 용의자만 밝게 표시돼요. 범인을 골라 체포하세요! (틀리면 -8시간)</div>
+  <div class="traitchips">${traitText()}</div>
+  <div class="sus">${SUSPECTS.map((sp,i)=>{const bad=S.wrongSus.includes(i),ok=susOK(sp);return `<button class="sc ${bad?"wrong":ok?"ok pick":"out pick"}" onclick="arrest(${i})"><div class="e">${sp.e}</div><b>${sp.n}</b>${ATTRS.map((a,k)=>`${a.label}: ${a.vals[sp.v[k]]}`).join("<br>")}</button>`}).join("")}</div>`;
+}
+function culpritV(attr){return SUSPECTS[S.culprit].v[attr]}
+
+/* =========================================================
+   행동
+   ========================================================= */
+function talk(i){
+  const R=S.round;if(R.spoken[i])return;R.spoken[i]=true;sfx.click();
+  const next=S.route[S.stop];
+  S.notes.push({stop:S.stop+1,who:R.wit[i].n,e:R.wit[i].e,text:R.clues[i].text});
+  if(i===2){S.traits[R.attr]=culpritV(R.attr);S.notes.push({stop:S.stop+1,who:"수사 메모",e:"🔎",text:`용의자의 ${ATTRS[R.attr].label}: ${ATTRS[R.attr].vals[culpritV(R.attr)]}`})}
+  render();
+}
+function useExtra(){
+  const R=S.round,c=S.route[S.stop];if(S.coins<1||R.extra)return;
+  S.coins--;
+  const pool=S.case.mode==="korea"?[`위치는 대략 북위 ${Math.round(c.lat)}°, 동경 ${Math.round(c.lon)}° 쯤이에요`,`${c.ocean}`]:S.case.mode==="nature"?[geoClues(c)[1],geoClues(c)[0]]:S.case.mode==="map"?[rand(c.nat),climClue(c)]:[climClue(c),geoClues(c)[1]];
+  R.extra=rand(pool);S.notes.push({stop:S.stop+1,who:"정보원(전화)",e:"📞",text:R.extra});sfx.ok();render();
+}
+function useScope(){
+  const R=S.round,c=S.route[S.stop];if(S.coins<1||R.gone)return;
+  const cand=R.tickets.filter(t=>t.id!==c.id&&!R.wrong.includes(t.id));if(!cand.length)return;
+  S.coins--;R.gone=rand(cand).id;sfx.ok();render();
+}
+async function pickTicket(i){
+  const R=S.round,t=R.tickets[i],next=S.route[S.stop],cur=curCity();
+  if(R.wrong.includes(t.id)||R.gone===t.id)return;
+  const hrs=flightH(cur,t);
+  document.querySelectorAll(".ticket").forEach(b=>b.style.pointerEvents="none");
+  if(t.id===next.id){
+    await flyPlane(cur,t,1200);
+    S.visited.push(t);S.learned.push(t);
+    if(spend(hrs)){render();return}
+    S.stop++;
+    if(S.stop<S.route.length)buildRound();
+    sfx.ok();render();
+    const last=S.stop===S.route.length;
+    showModal(`<div class="big">${t.e}</div><h2 style="text-align:center">${t.name}, ${t.country} 도착!</h2>
+      <div class="small" style="text-align:center">${t.cont} · ${NS(t.lat)} ${Math.abs(Math.round(t.lat))}°, ${EW(t.lon)} ${Math.abs(Math.round(t.lon))}° · 비행 ${hrs}시간</div>
+      <div class="expl">📚 <b>알아 두기</b><br>${t.fact}</div>
+      <div class="expl">${last?"🚨 범인이 이 도시에 숨어 있어요! 수집한 특징으로 <b>체포 영장</b>을 발부하세요.":"🕵️ 범인은 이미 다음 도시로 떠났어요. 목격자를 찾아 다시 단서를 모아요!"}</div>
+      <div class="row"><button class="btn" onclick="closeModal()">${last?"영장 발부하러 가기":"수사 시작!"}</button></div>`);
+  }else{
+    await flyPlane(cur,t,800);sfx.bad();
+    R.wrong.push(t.id);S.mistakes++;
+    const dead=spend(6);
+    await flyPlane(t,cur,600);
+    render();
+    if(dead)return;
+    showModal(`<div class="big">❌</div><h2 style="text-align:center">${t.name}에는 범인이 없어요!</h2>
+      <div class="expl">여기는 <b>${t.country}</b>, <b>${t.cont}</b> 대륙이에요.<br>위치는 <b>${NS(t.lat)} ${Math.abs(Math.round(t.lat))}°, ${EW(t.lon)} ${Math.abs(Math.round(t.lon))}°</b> 근처예요.<br>${t.ocean}.<br>📚 ${t.fact}</div>
+      <div class="expl">단서와 어떤 점이 다른지 다시 비교해 보세요. (-6시간)</div>
+      <div class="row"><button class="btn" onclick="closeModal()">다시 생각해 볼게요</button></div>`);
+  }
+}
+function arrest(i){
+  if(S.wrongSus.includes(i))return;
+  if(i===S.culprit){S.screen="end";S.result="win";sfx.win();
+    const sv=U;sv.wins=sv.wins||{};sv.best=sv.best||{};sv.wins[S.case.id]=(sv.wins[S.case.id]||0)+1;
+    S.stars=S.hours/S.budget>=.5?3:S.hours/S.budget>=.25?2:1;sv.best[S.case.id]=Math.max(sv.best[S.case.id]||0,S.stars);
+    sv.dex=[...new Set([...(sv.dex||[]),...S.visited.map(c=>c.id)])];sv.quizRight=(sv.quizRight||0)+S.quizRight;sv.quizTotal=(sv.quizTotal||0)+S.quizTotal;render();
+  }else{
+    S.wrongSus.push(i);S.mistakes++;sfx.bad();
+    const dead=spend(8);render();if(dead)return;
+    showModal(`<div class="big">🤨</div><h2 style="text-align:center">${SUSPECTS[i].e} ${SUSPECTS[i].n}은(는) 범인이 아니에요!</h2>
+      <div class="expl">특징이 맞지 않아요. 수첩의 특징과 용의자 카드를 꼼꼼히 비교해 보세요. (-8시간)</div><div class="row"><button class="btn" onclick="closeModal()">다시 고르기</button></div>`);
+  }
+}
+function showNotes(){
+  const byStop={};S.notes.forEach(n=>{(byStop[n.stop]=byStop[n.stop]||[]).push(n)});
+  const list=Object.keys(byStop).map(k=>`<h3 style="margin-top:12px">🔎 ${k}단계 단서</h3><ul class="notes">${byStop[k].map(n=>`<li>${n.e} <b>${n.who}</b>: ${n.text}</li>`).join("")}</ul>`).join("")||`<p class="small">아직 모은 단서가 없어요. 목격자에게 말을 걸어 보세요!</p>`;
+  showModal(`<h2>📒 탐정 수첩</h2><div class="traitchips">${traitText()}</div>${list}
+   <h3 style="margin-top:14px">👥 용의자 파일</h3><div class="sus">${SUSPECTS.map(sp=>`<div class="sc ${susOK(sp)?"ok":"out"}"><div class="e">${sp.e}</div><b>${sp.n}</b>${ATTRS.map((a,k)=>`${a.label}: ${a.vals[sp.v[k]]}`).join("<br>")}</div>`).join("")}</div>
+   <div class="row"><button class="btn" onclick="closeModal()">닫기</button></div>`);
+}
+function showModal(h){const m=$("#modal");m.innerHTML=`<div class="mbox">${h}</div>`;m.classList.remove("hidden")}
+function closeModal(){$("#modal").classList.add("hidden");$("#modal").innerHTML=""}
+
+/* =========================================================
+   현장 조사 미니게임
+   ========================================================= */
+let MG=null;
+function startMini(){
+  if(S.round.mini)return;
+  const m=S.case.mode,types=m==="map"?["coord","quiz","quiz"]:m==="nature"?["chart","pack","quiz"]:m==="korea"?["coord","quiz","quiz"]:["coord","chart","pack","quiz","quiz"];
+  const t=rand(types);MG={type:t};
+  ({coord:miniCoord,chart:miniChart,pack:miniPack,quiz:miniQuiz})[t]();
+  render();
+}
+function miniEnd(ok,extra=""){
+  const body=$(".mbox");if(!body)return;S.round.mini=true;
+  if(ok){gain(3);S.coins++;sfx.ok()}else{sfx.bad();if(spend(2)){closeModal();render();return}}
+  body.insertAdjacentHTML("beforeend",`<div class="expl" style="border:1px solid ${ok?"var(--green)":"var(--red)"}">${ok?"🎉 성공! <b>+3시간, 🪙+1</b>":"😢 아쉬워요. <b>-2시간</b>"} ${extra}</div><div class="row"><button class="btn" onclick="closeModal();render()">계속 수사하기</button></div>`);
+  document.querySelectorAll(".mbox .opt,.mbox .pk,.mbox svg[data-mini]").forEach(e=>e.style.pointerEvents="none");
+}
+function miniQuiz(){
+  const okm=q=>S.case.mode==="all"||q.m===S.case.mode||(S.case.mode==="korea"&&q.m==="map");
+  const pool=QUIZ.filter(q=>okm(q)&&!S.usedQ.has(q.q));
+  const q=rand(pool.length?pool:QUIZ.filter(okm));S.usedQ.add(q.q);
+  const opts=shuffle(q.o.map((t,i)=>({t,ok:i===q.a})));
+  showModal(`<h2>🔍 현장 조사: 수수께끼 쪽지</h2><p style="font-size:18px;line-height:1.6">${q.q}</p>
+   <div class="opts">${opts.map((o,i)=>`<button class="opt" data-ok="${o.ok?1:0}" onclick="quizPick(this,'${encodeURIComponent(q.w)}','${encodeURIComponent(topicOf(q))}')">${o.t}</button>`).join("")}</div>`);
+}
+function quizPick(b,w,t){
+  const ok=b.dataset.ok==="1";recordTopic(decodeURIComponent(t),ok);S.quizTotal++;if(ok)S.quizRight++;
+  document.querySelectorAll(".mbox .opt").forEach(o=>{if(o.dataset.ok==="1")o.classList.add("good")});
+  if(!ok)b.classList.add("bad");
+  S.learned.push({quiz:true,text:decodeURIComponent(w)});
+  document.querySelectorAll(".mbox .opt").forEach(o=>o.style.pointerEvents="none");
+  $(".mbox").insertAdjacentHTML("beforeend",`<div class="expl">📚 ${decodeURIComponent(w)}</div>`);
+  miniEnd(ok);
+}
+function miniCoord(){
+  const kr=VIEW==="korea",c=rand(poolCities(S.case.mode=="all"?"all":S.case.mode)),rn=v=>kr?Math.round(v):r5(v),la=rn(c.lat),lo=rn(c.lon),tol=kr?1.3:10;MG.t={lat:la,lon:lo,city:c};
+  showModal(`<h2>🔍 현장 조사: 좌표 추적</h2><p style="font-size:18px;line-height:1.6">괴도의 쪽지: “<b>${la===0?"적도(위도 0°)":NS(la)+" "+Math.abs(la)+"°"}, ${lo===0?"본초 자오선(경도 0°)":EW(lo)+" "+Math.abs(lo)+"°"}</b> 지점에서 만나자!”<br><span class="small">지도에서 그 지점을 눌러요. (오차 ${kr?"1°":"10°"} 이내)</span></p>
+   ${mapSVG({mini:true,id:"mmap"})}`);
+  const svg=$("#mmap");svg.style.cursor="crosshair";
+  svg.addEventListener("click",ev=>{
+    const p=svgPoint(svg,ev),ok=Math.abs(p.lat-la)<=tol&&Math.abs(p.lon-lo)<=tol;recordTopic(kr?"우리나라 위치·영토":"위도·경도·시차",ok);
+    svg.insertAdjacentHTML("beforeend",`<g>${mapMarks([{lat:la,lon:lo,type:"target"},{lat:p.lat,lon:p.lon,type:"click"}])}</g>`);
+    miniEnd(ok,`<br>정답 위치는 초록색 표시예요. 가까이에 <b>${c.name}(${c.country})</b>이(가) 있어요.`);
+  });
+}
+function mapMarks(ms){return ms.map(m=>{const x=X(m.lon),y=Y(m.lat);return m.type==="target"?`<g transform="translate(${x},${y})"><circle r="9" fill="none" stroke="#4fd18b" stroke-width="2.6"/><path d="M-13 0H13M0 -13V13" stroke="#4fd18b" stroke-width="1.8"/></g>`:`<circle cx="${x}" cy="${y}" r="5" fill="#ff5d6c" stroke="#fff" stroke-width="1.5"/>`}).join("")}
+function chartSVG(k){
+  const d=CHART[k],W=360,H=210,L=34,Rr=34,T=14,B=26,pw=(W-L-Rr)/12;
+  const ty=v=>T+(H-T-B)*(1-(v+40)/80),ry=v=>T+(H-T-B)*(1-Math.min(v,400)/400);
+  let s=`<svg viewBox="0 0 ${W} ${H}" font-size="9">`;
+  for(let v=0;v<=400;v+=100)s+=`<line x1="${L}" x2="${W-Rr}" y1="${ry(v)}" y2="${ry(v)}" stroke="#ddd"/><text x="${L-4}" y="${ry(v)+3}" text-anchor="end" fill="#2f6fbd">${v}</text>`;
+  for(let v=-40;v<=40;v+=20)s+=`<text x="${W-Rr+4}" y="${ty(v)+3}" fill="#d9531e">${v}</text>`;
+  d.r.forEach((v,i)=>{s+=`<rect x="${L+i*pw+4}" y="${ry(v)}" width="${pw-8}" height="${H-B-ry(v)}" fill="#6db3f2"/>`;s+=`<text x="${L+i*pw+pw/2}" y="${H-B+12}" text-anchor="middle" fill="#333">${i+1}</text>`});
+  s+=`<polyline fill="none" stroke="#e8602c" stroke-width="2.4" points="${d.t.map((v,i)=>`${L+i*pw+pw/2},${ty(v)}`).join(" ")}"/>`;
+  d.t.forEach((v,i)=>{s+=`<circle cx="${L+i*pw+pw/2}" cy="${ty(v)}" r="2.6" fill="#e8602c"/>`});
+  s+=`<text x="${L-4}" y="9" text-anchor="end" fill="#2f6fbd">mm</text><text x="${W-Rr+4}" y="9" fill="#d9531e">℃</text><text x="${W/2}" y="${H-1}" text-anchor="middle" fill="#333">월</text></svg>`;
+  return s;
+}
+function miniChart(){
+  const keys=Object.keys(CHART),k=rand(keys);
+  showModal(`<h2>🔍 현장 조사: 기후 그래프</h2><p style="font-size:17px;line-height:1.6">현장에 떨어진 기후 그래프예요. <span style="color:#ff9a6c">주황 선은 기온</span>, <span style="color:#7cc4ff">파란 막대는 강수량</span>이에요. 어느 기후일까요?</p>
+   <div class="chartbox">${chartSVG(k)}</div>
+   <div class="opts grid">${shuffle(keys).map(x=>`<button class="opt" onclick="chartPick(this,'${x}','${k}')">${x} 기후</button>`).join("")}</div>`);
+}
+function chartPick(b,x,k){
+  const ok=x===k;recordTopic("기후",ok);b.classList.add(ok?"good":"bad");
+  document.querySelectorAll(".mbox .opt").forEach(o=>{if(o.textContent.startsWith(k))o.classList.add("good")});
+  S.learned.push({quiz:true,text:`${k} 기후: ${CLIM_DESC[k]} 기후예요. 그래프에서는 ${CLIM_HINT[k]}`});
+  miniEnd(ok,`<br>정답은 <b>${k} 기후</b>! ${CLIM_HINT[k]}`);
+}
+function miniPack(){
+  const cities=poolCities("world").filter(c=>ITEMS.some(i=>i.c.includes(c.climate)));
+  const c=rand(cities),good=ITEMS.filter(i=>i.c.includes(c.climate)),bad=ITEMS.filter(i=>!i.c.includes(c.climate));
+  const items=shuffle([...shuffle(good).slice(0,3),...shuffle(bad).slice(0,6-Math.min(3,good.length))]);
+  MG.t={c,items,sel:new Set(),need:items.filter(i=>i.c.includes(c.climate)).length};
+  showModal(`<h2>🔍 현장 조사: 짐 싸기</h2><p style="font-size:17px;line-height:1.6">다음 단서를 따라 <b>${c.name}(${c.country})</b>로 갈 때를 상상해요. 이곳은 <b>${c.climate} 기후</b>예요.<br>어울리는 짐을 <b>${MG.t.need}개</b> 골라 보세요!</p>
+   <div class="opts grid">${items.map((it,i)=>`<button class="opt pk" id="pk${i}" onclick="packToggle(${i})" style="text-align:center"><div style="font-size:32px">${it.e}</div>${it.n}</button>`).join("")}</div>
+   <div class="row"><button class="btn" id="packgo" disabled onclick="packCheck()">짐 확인!</button></div>`);
+}
+function packToggle(i){
+  const t=MG.t;if(t.sel.has(i))t.sel.delete(i);else if(t.sel.size<t.need)t.sel.add(i);
+  document.querySelectorAll(".pk").forEach((b,k)=>b.classList.toggle("sel",t.sel.has(k)));
+  $("#packgo").disabled=t.sel.size!==t.need;
+}
+function packCheck(){
+  const t=MG.t,ok=[...t.sel].every(i=>t.items[i].c.includes(t.c.climate));recordTopic("기후",ok);
+  document.querySelectorAll(".pk").forEach((b,k)=>{if(t.items[k].c.includes(t.c.climate))b.classList.add("good");else if(t.sel.has(k))b.classList.add("bad")});
+  $("#packgo").style.display="none";
+  S.learned.push({quiz:true,text:`${t.c.climate} 기후(${CLIM_DESC[t.c.climate]})에는 ${t.items.filter(i=>i.c.includes(t.c.climate)).map(i=>i.n).join(", ")}이(가) 어울려요.`});
+  miniEnd(ok,`<br>${t.c.climate} 기후에는 ${t.items.filter(i=>i.c.includes(t.c.climate)).map(i=>i.e+i.n).join(", ")}이(가) 어울려요.`);
+}
+
+/* =========================================================
+   결말
+   ========================================================= */
+function endHTML(){
+  if(S.result==="win"){
+    const sp=SUSPECTS[S.culprit],boss=S.case.id==="final";
+    const facts=[...new Map(S.learned.filter(x=>!x.quiz).map(c=>[c.id,c])).values()];
+    const qs=[...new Set(S.learned.filter(x=>x.quiz).map(x=>x.text))];
+    return `<div class="card" style="max-width:820px;margin:20px auto;text-align:center"><div style="font-size:70px">🎉</div><h1>체포 성공!</h1>
+    <div style="font-size:48px;margin:6px">${sp.e}</div><p style="font-size:18px;line-height:1.7"><b>${sp.n}</b>${boss?"의 가면을 벗기자… 정체는 바로 두목 <b>괴도 원홍</b>이었어요! 😲":"을(를) 체포했어요!"}<br>${S.case.item}을(를) 무사히 되찾았어요.</p>
+    <div style="font-size:36px;letter-spacing:6px">${"⭐".repeat(S.stars)}${"☆".repeat(3-S.stars)}</div>
+    <div class="rankbar"><span class="chip">⏱️ 남은 시간 ${S.hours}시간</span><span class="chip">❌ 실수 ${S.mistakes}번</span><span class="chip">🧠 퀴즈 ${S.quizRight}/${S.quizTotal}</span></div>
+    <h3 style="margin-top:18px">📚 오늘 배운 곳</h3><div class="recap">${facts.map(c=>`<div>${c.e} <b>${c.name} (${c.country})</b><br>${c.fact}</div>`).join("")}</div>
+    ${qs.length?`<h3 style="margin-top:18px">🧠 현장 조사 복습</h3><div class="recap">${qs.map(t=>`<div>${t}</div>`).join("")}</div>`:""}
+    <div class="row" style="justify-content:center;margin-top:20px"><button class="btn ghost" onclick="S=null;render()">사건 목록</button><button class="btn" onclick="startCase('${S.case.id}')">같은 사건 다시 도전 🔁</button></div></div>`;
+  }
+  return `<div class="card" style="max-width:640px;margin:40px auto;text-align:center"><div style="font-size:70px">⏰</div><h1>시간이 다 됐어요…</h1>
+  <p style="font-size:18px;line-height:1.7">괴도의 비행기가 먼저 떠나 버렸어요. 하지만 탐정은 실패에서 배우는 법!<br>이번엔 <b>위도·경도 눈금</b>과 <b>기후·지형 단서</b>를 더 꼼꼼히 비교해 보세요.</p>
+  <div class="row" style="justify-content:center"><button class="btn ghost" onclick="S=null;render()">사건 목록</button><button class="btn" onclick="startCase('${S.case.id}')">다시 도전 🔁</button></div></div>`;
+}
+function confetti(){
+  const em=["🎉","⭐","🌍","🏆","✨","🎊","🗺️"];
+  for(let i=0;i<36;i++){const d=document.createElement("div");d.className="confetti";d.textContent=rand(em);d.style.left=Math.random()*100+"vw";d.style.animationDuration=(2+Math.random()*2.5)+"s";d.style.animationDelay=Math.random()*.8+"s";document.body.appendChild(d);setTimeout(()=>d.remove(),5500)}
+}
+dbLoad();DB.users.guest=DB.users.guest||newUser("");U=DB.users.guest;UID="guest";UNAME="탐정";render();
+</script>
+</body>
+</html>
