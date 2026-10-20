@@ -53,6 +53,14 @@
   .wirehit{cursor:pointer}
   @keyframes blink{50%{opacity:.25}}
   .shorted{animation:blink .5s infinite}
+  .hotwire{animation:blink .35s infinite}
+  #warn.burst{background:#e65100}
+  #safety{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));background:#fff8e1;
+    border:3px solid #ffb300;border-radius:16px;padding:12px 40px 12px 14px;font-size:15px;line-height:1.55;display:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  #safety b.t{display:block;font-size:16px;color:#b71c1c;margin-bottom:2px}
+  #safety button{position:absolute;right:8px;top:8px;border:0;background:transparent;font-size:18px;padding:2px 6px}
+  select:disabled{opacity:.45;cursor:default}
   @media (max-width:720px){
     main{flex-direction:column}
     aside{width:auto;flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px}
@@ -69,22 +77,32 @@
   <div class="tools">
     <button id="btnRotate" title="선택한 부품 돌리기 (R)">⟳ 돌리기</button>
     <button id="btnDelete" title="선택한 부품·전선 지우기 (Delete)">🗑 지우기</button>
+    <select id="bulbRating" title="선택한 전구가 견딜 수 있는 전압">
+      <option value="1.5">1.5V 전구</option>
+      <option value="3">3V 전구</option>
+      <option value="4.5" selected>4.5V 전구 (기본)</option>
+      <option value="6">6V 전구</option>
+    </select>
+    <button id="btnFix" title="터진 전구, 그을린 전지를 새것으로 바꾸기">🔧 새것으로</button>
     <button id="btnClear">모두 지우기</button>
     <select id="preset">
       <option value="">예시 회로 불러오기…</option>
       <option value="basic">전지 1개 + 전구 1개</option>
       <option value="batSeries">전지 2개 직렬연결</option>
+      <option value="batSeries3">전지 3개 직렬연결</option>
       <option value="batParallel">전지 2개 병렬연결</option>
       <option value="bulbSeries">전구 2개 직렬연결</option>
       <option value="bulbParallel">전구 2개 병렬연결</option>
       <option value="touch">전지와 전구를 맞대어 불 켜기</option>
       <option value="touchSeries">전지 2개 맞대기 + 전구</option>
+      <option value="burst">⚠ 안전 교육: 전지 4개 직렬 (스위치를 닫으면 펑!)</option>
     </select>
     <label class="chk"><input type="checkbox" id="chkFlow" checked> 전류 흐름 보기</label>
     <label class="chk"><input type="checkbox" id="chkBright"> 밝기 숫자 보기</label>
+    <label class="chk"><input type="checkbox" id="chkSound" checked> 소리</label>
   </div>
   <a class="brand" href="https://games.brendy.net/" title="Brendy Games 첫 화면으로">
-    <span class="pad">🎮</span><span><b>Brendy</b> Games 작품<br><small>games.brendy.net</small></span>
+    <span class="pad">🎮</span><span><b>Brendy</b> Games<br><small>games.brendy.net</small></span>
   </a>
 </header>
 <main>
@@ -124,10 +142,12 @@
       <g id="gWires"></g>
       <g id="gDots" pointer-events="none"></g>
       <g id="gTerms"></g>
+      <g id="gFx" pointer-events="none"></g>
       <path id="draft" fill="none" stroke="#2f6fde" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round" pointer-events="none"/>
     </svg>
     <div id="status"></div>
-    <div id="warn">⚠ 합선! 전지의 두 극이 전구 없이 바로 연결되었어요. 전선을 떼어 주세요.</div>
+    <div id="warn"></div>
+    <div id="safety"><button id="safetyClose" title="닫기">✕</button><b class="t"></b><span class="m"></span></div>
   </div>
 </main>
 <footer class="sitefoot">© <a href="https://games.brendy.net/">Brendy Games</a> · 배우는 즐거움, 노는 즐거움</footer>
@@ -141,7 +161,9 @@
   const R_WIRE = 0.01;    // 전선·닫힌 스위치 저항 (Ω)
   const SHORT_I = 2;      // 이 전류(A)를 넘으면 합선으로 판단
   const P0 = Math.pow(E / (R_BULB + R_INT + 4 * R_WIRE), 2) * R_BULB; // 기준 밝기: 전지 1개 + 전구 1개 + 스위치 (전선 3개)
-  const WIRE_COLORS = ['#e53935', '#263238', '#1e88e5', '#fbc02d', '#43a047'];
+  const BURST_K = 1.15;   // 전구 용량(V)의 1.15배를 넘는 전압이 걸리면 전구가 터진다 (4.5V 전구: 전지 3개 OK, 4개 펑)
+  const SCORCH_MS = 1500; // 합선이 이 시간(ms) 넘게 계속되면 불이 붙고 전지가 그을린다
+  const WIRE_COLORS =['#e53935', '#263238', '#1e88e5', '#fbc02d', '#43a047'];
   const W = 1400, H = 860;
 
   const TOUCH = 7;        // 단자끼리 이 거리(px) 안이면 맞닿은 것으로 본다
@@ -157,6 +179,7 @@
   const isBat = t => t === 'battery' || t === 'cell';
   const isBulb = t => t === 'bulb' || t === 'bare';
   const nTerms = c => DEFS[c.type].terms.length;
+  const ratingOf = c => c.rating || 4.5;
 
   // ---------- 상태 ----------
   let comps = [], wires = [], nextId = 1, colorIdx = 0;
@@ -166,10 +189,13 @@
   let palettePending = null;     // 부품함에서 끌기
   let result = null;
   let anim = [];                 // 전류 점 애니메이션
+  let lastRating = 4.5;          // 새로 꺼내는 전구의 용량
+  let hot = [];                  // 합선으로 뜨거워진 곳 (불꽃이 튀는 위치)
+  let shortSince = 0, lastBurst = -1e9;
 
   const $ = id => document.getElementById(id);
   const svg = $('board');
-  const gComps = $('gComps'), gWires = $('gWires'), gDots = $('gDots'), gTerms = $('gTerms'), draft = $('draft');
+  const gComps = $('gComps'), gWires = $('gWires'), gDots = $('gDots'), gTerms = $('gTerms'), gFx = $('gFx'), draft = $('draft');
   const showFlow = () => $('chkFlow').checked;
   const showBright = () => $('chkBright').checked;
 
@@ -226,7 +252,7 @@
     for (const c of comps) {
       const a = idx.get(c.id + ':0'), b = idx.get(c.id + ':1');
       if (isBat(c.type)) { addG(a, b, 1 / R_INT); I[b] += E / R_INT; I[a] -= E / R_INT; } // 마디1 = (+)극
-      else if (isBulb(c.type)) addG(a, b, 1 / R_BULB);
+      else if (isBulb(c.type) && !c.broken) addG(a, b, 1 / R_BULB); // 터진 전구는 전기가 통하지 않는다
       else if (c.type === 'switch' && c.closed) addG(a, b, 1 / R_WIRE);
     }
     for (const w of wires) addG(idx.get(nodeKey(w.a)), idx.get(nodeKey(w.b)), 1 / R_WIRE);
@@ -257,7 +283,7 @@
         const cur = (E - dv) / R_INT; res.comp[c.id] = { I: cur, short: Math.abs(cur) > SHORT_I };
         if (Math.abs(cur) > SHORT_I) res.short = true;
       } else if (isBulb(c.type)) {
-        const cur = dv / R_BULB; res.comp[c.id] = { I: cur, P: cur * cur * R_BULB };
+        const cur = c.broken ? 0 : dv / R_BULB; res.comp[c.id] = { I: cur, P: cur * cur * R_BULB, V: Math.abs(dv) };
       }
     }
     for (const w of wires) res.wire[w.id] = (v(nodeKey(w.a)) - v(nodeKey(w.b))) / R_WIRE; // a→b 방향 전류
@@ -277,6 +303,7 @@
       <rect x="72" y="-9" width="10" height="18" rx="3" fill="#d6dbe0"/>
       <text x="-18" y="7" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">1.5V</text>
       <text x="53" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#5a3d00">+</text>
+      ${soot(c)}
       <text x="-100" y="-42" text-anchor="middle" font-size="26" font-weight="900" fill="#1f4fbf">−</text>
       <text x="100" y="-42" text-anchor="middle" font-size="26" font-weight="900" fill="#d32f2f">+</text>`;
   }
@@ -289,37 +316,62 @@
       <rect x="-73" y="-17" width="5" height="34" rx="2" fill="#c9d0d6" stroke="#9aa3ab" stroke-width="1"/>
       <text x="-18" y="7" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">1.5V</text>
       <text x="53" y="8" text-anchor="middle" font-size="22" font-weight="900" fill="#5a3d00">+</text>
+      ${soot(c)}
       <text x="-72" y="-30" text-anchor="middle" font-size="24" font-weight="900" fill="#1f4fbf">−</text>
       <text x="80" y="-30" text-anchor="middle" font-size="24" font-weight="900" fill="#d32f2f">+</text>`;
   }
-  const bulbAlpha = r => { const b = r ? r.P / P0 : 0; return b < 0.01 ? 0 : 1 - Math.exp(-1.2 * b); };
+  // 그을음 (합선으로 뜨거워졌던 전지)
+  const soot = c => c.scorched ? `<ellipse cx="-4" cy="0" rx="62" ry="20" fill="#000" opacity=".5"/><ellipse cx="20" cy="-6" rx="26" ry="10" fill="#3b2a20" opacity=".6"/>` : '';
+  // 밝기 단계: 전지 1개일 때 s=1, 직렬 2개면 s≈2, 3개면 s≈3 (전류에 비례)
+  const bulbLevel = r => r ? Math.sqrt(r.P / P0) : 0;
   // 유리구 + 필라멘트 (아래쪽 끝이 y=-14)
-  function bulbGlass(alpha) {
-    const glass = alpha > 0 ? `rgba(255,${235 - 30 * alpha | 0},${150 - 100 * alpha | 0},${0.35 + 0.55 * alpha})` : 'rgba(225,238,250,.55)';
-    const fil = alpha > 0 ? '#ff9800' : '#7a5a48';
-    return (alpha > 0 ? `<circle cx="0" cy="-46" r="${60 + 50 * alpha}" fill="url(#glow)" opacity="${alpha}"/>` : '') + `
-      <path d="M-15 -14 C-36 -30 -34 -82 0 -82 C34 -82 36 -30 15 -14 Z" fill="${glass}" stroke="#8fa6b8" stroke-width="2.5"/>
-      <path d="M-7 -14 L-9 -48 L-5 -54 L-1 -48 L3 -54 L7 -48 L9 -14" fill="none" stroke="${fil}" stroke-width="${alpha > 0 ? 3.5 : 2.5}" stroke-linejoin="round"/>`;
+  function bulbGlass(c, r) {
+    const glassPath = 'M-15 -14 C-36 -30 -34 -82 0 -82 C34 -82 36 -30 15 -14 Z';
+    if (c.broken) return `
+      <path d="${glassPath}" fill="rgba(90,90,90,.25)" stroke="#7a7a7a" stroke-width="2.5" stroke-dasharray="14 5 4 6"/>
+      <path d="M-22 -60 L-8 -52 L-14 -40 M10 -78 L4 -64 L16 -56 M18 -40 L8 -34" fill="none" stroke="#555" stroke-width="2"/>
+      <ellipse cx="0" cy="-66" rx="16" ry="9" fill="#2b2b2b" opacity=".55"/>
+      <path d="M-7 -14 L-9 -40 L-4 -46 M9 -14 L7 -34" fill="none" stroke="#3b2a20" stroke-width="2.5"/>`;
+    const s = bulbLevel(r);
+    if (s < 0.1) return `
+      <path d="${glassPath}" fill="rgba(225,238,250,.55)" stroke="#8fa6b8" stroke-width="2.5"/>
+      <path d="M-7 -14 L-9 -48 L-5 -54 L-1 -48 L3 -54 L7 -48 L9 -14" fill="none" stroke="#7a5a48" stroke-width="2.5" stroke-linejoin="round"/>`;
+    const k = Math.min(s, 1), hi = Math.min(Math.max(s - 1, 0) / 2, 1); // hi: 1개 → 0, 3개 → 1
+    const glass = `rgba(255,${(205 + 50 * hi) | 0},${(60 + 180 * hi) | 0},${0.35 + 0.55 * k})`;
+    const fil = s < 0.6 ? '#ff7a00' : s < 1.6 ? '#ffa000' : s < 2.6 ? '#ffe066' : '#ffffff';
+    let out = `<circle cx="0" cy="-46" r="${50 + 38 * Math.min(s, 3.5)}" fill="url(#glow)" opacity="${Math.min(1, 0.3 + 0.35 * s)}"/>`;
+    if (s > 1.5) { // 빛줄기
+      const len = 22 + 26 * Math.min(s - 1.5, 2), op = Math.min(1, 0.35 + (s - 1.5) * 0.4);
+      for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6, x1 = Math.cos(a) * 44, y1 = Math.sin(a) * 44 - 46, x2 = Math.cos(a) * (44 + len), y2 = Math.sin(a) * (44 + len) - 46;
+        out += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#ffd54f" stroke-width="4" stroke-linecap="round" opacity="${op}"/>`;
+      }
+    }
+    out += `<path d="${glassPath}" fill="${glass}" stroke="#d4b25a" stroke-width="2.5"/>`;
+    if (s > 2.2) out += `<circle cx="0" cy="-50" r="${14 + 6 * Math.min(s - 2.2, 2)}" fill="#fff" opacity=".85"/>`;
+    return out + `<path d="M-7 -14 L-9 -48 L-5 -54 L-1 -48 L3 -54 L7 -48 L9 -14" fill="none" stroke="${fil}" stroke-width="${2.5 + Math.min(s, 3)}" stroke-linejoin="round"/>`;
   }
-  const brightText = (c, r, y) => showBright() && r
-    ? `<text x="0" y="${y}" text-anchor="middle" font-size="20" font-weight="700" fill="#5d4a1a" transform="rotate(${-c.rot} 0 ${y})">밝기 ${Math.round(r.P / P0 * 100)}%</text>` : '';
+  const brightText = (c, r, y) => !showBright() || !r ? '' : c.broken
+    ? `<text x="0" y="${y}" text-anchor="middle" font-size="20" font-weight="800" fill="#c62828" transform="rotate(${-c.rot} 0 ${y})">터짐</text>`
+    : `<text x="0" y="${y}" text-anchor="middle" font-size="20" font-weight="700" fill="#5d4a1a" transform="rotate(${-c.rot} 0 ${y})">밝기 ${Math.round(r.P / P0 * 100)}%</text>`;
   function drawBulb(c, r) {
-    return bulbGlass(bulbAlpha(r)) + `
+    return bulbGlass(c, r) + `
       <rect x="-62" y="6" width="124" height="42" rx="8" fill="#e8e3d6" stroke="#b9ae97" stroke-width="2"/>
       <rect x="-78" y="23" width="30" height="8" fill="#b8c0c8"/><rect x="48" y="23" width="30" height="8" fill="#b8c0c8"/>
       <path d="M-48 27 H-16 M48 27 H16" stroke="#9aa3ab" stroke-width="5"/>
       <rect x="-17" y="-16" width="34" height="26" rx="3" fill="#c3c9cf" stroke="#8d969e" stroke-width="2"/>
-      <path d="M-17 -9 H17 M-17 -2 H17 M-17 5 H17" stroke="#8d969e" stroke-width="2"/>` + brightText(c, r, 78);
+      <path d="M-17 -9 H17 M-17 -2 H17 M-17 5 H17" stroke="#8d969e" stroke-width="2"/>
+      <text x="0" y="44" text-anchor="middle" font-size="13" font-weight="800" fill="#7a6a45">${ratingOf(c)}V</text>` + brightText(c, r, 78);
   }
   // 끼우개 없는 전구: 꼭지쇠(옆면 나사 부분)와 꼭지(맨 아래 끝)
   function drawBare(c, r) {
     const lab = (x, y, anchor, t) => `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="14" font-weight="700" fill="#5f6670" transform="rotate(${-c.rot} ${x} ${y})">${t}</text>`;
-    return `<g transform="translate(0,-6)">${bulbGlass(bulbAlpha(r))}</g>
+    return `<g transform="translate(0,-6)">${bulbGlass(c, r)}</g>
       <rect x="-17" y="-21" width="34" height="35" rx="3" fill="#c3c9cf" stroke="#8d969e" stroke-width="2"/>
       <path d="M-17 -14 L17 -10 M-17 -6 L17 -2 M-17 2 L17 6" stroke="#8d969e" stroke-width="2"/>
       <path d="M-13 14 H13 L8 24 H-8 Z" fill="#2b2b2b"/>
       <rect x="-5" y="22" width="10" height="9" rx="4" fill="#d0d6db" stroke="#7d868e" stroke-width="1.5"/>
-      ${lab(-26, -22, 'end', '꼭지쇠')}${lab(12, 46, 'start', '꼭지')}` + brightText(c, r, 64);
+      ${lab(-26, -22, 'end', '꼭지쇠')}${lab(12, 46, 'start', '꼭지')}${lab(26, -22, 'start', ratingOf(c) + 'V')}` + brightText(c, r, 64);
   }
   function drawSwitch(c) {
     const ang = c.closed ? 0 : -34;
@@ -341,6 +393,16 @@
 
   function render() {
     result = solve();
+    // 용량보다 높은 전압이 걸린 전구는 터진다 (가장 심한 것부터 하나씩: 터지면 회로가 바뀌므로 다시 계산)
+    for (let guard = 0; guard < 50; guard++) {
+      let worst = null, wr = BURST_K;
+      for (const c of comps) if (isBulb(c.type) && !c.broken) {
+        const ratio = result.comp[c.id].V / ratingOf(c);
+        if (ratio > wr) { wr = ratio; worst = c; }
+      }
+      if (!worst) break;
+      worst.broken = true; burstFx(worst, wr); result = solve();
+    }
     $('empty').style.display = comps.length ? 'none' : '';
     // 부품
     let h = '';
@@ -358,13 +420,23 @@
     h = '';
     for (const w of wires) {
       const d = wirePath(w), sel = selected && selected.kind === 'wire' && selected.id === w.id;
+      const isHot = Math.abs(result.wire[w.id]) > SHORT_I;
       h += `<g data-wire="${w.id}">
+        ${isHot ? `<path class="hotwire" d="${d}" fill="none" stroke="#ff5722" stroke-width="20" stroke-linecap="round" opacity=".55"/>` : ''}
         ${sel ? `<path d="${d}" fill="none" stroke="#7fb0ff" stroke-width="16" stroke-linecap="round"/>` : ''}
         <path id="wp${w.id}" d="${d}" fill="none" stroke="${w.color}" stroke-width="7" stroke-linecap="round"/>
         <path class="wirehit" d="${d}" fill="none" stroke="transparent" stroke-width="22"/>
       </g>`;
     }
     gWires.innerHTML = h;
+    // 합선으로 뜨거워진 곳: 합선된 전지 + 큰 전류가 흐르는 전선의 가운데
+    hot = [];
+    for (const c of comps) if (isBat(c.type) && result.comp[c.id].short) hot.push({ x: c.x, y: c.y, c });
+    for (const w of wires) if (Math.abs(result.wire[w.id]) > SHORT_I) {
+      const p = $('wp' + w.id), m = p.getPointAtLength(p.getTotalLength() / 2); hot.push({ x: m.x, y: m.y });
+    }
+    if (result.short && !shortSince) { shortSince = performance.now(); showSafety('short'); }
+    if (!result.short) shortSince = 0;
     // 단자 (집게 포함)
     h = '';
     const used = new Map(), touched = new Set();
@@ -384,13 +456,119 @@
     // 상태
     const bulbs = comps.filter(c => isBulb(c.type));
     const lit = bulbs.filter(c => result.comp[c.id].P / P0 >= 0.01).length;
-    $('status').innerHTML = bulbs.length
+    const broken = bulbs.filter(c => c.broken).length;
+    $('status').innerHTML = (bulbs.length
       ? (lit ? `💡 켜진 전구 <b>${lit}</b> / ${bulbs.length}개` : `전구가 꺼져 있어요 (0 / ${bulbs.length}개)`)
-      : '부품 ' + comps.length + '개 · 전선 ' + wires.length + '개';
-    $('warn').style.display = result.short ? 'block' : 'none';
-    $('btnRotate').disabled = !(selected && selected.kind === 'comp');
+      : '부품 ' + comps.length + '개 · 전선 ' + wires.length + '개') + (broken ? ` · 💥 터진 전구 <b>${broken}</b>개` : '');
+    updateWarn();
+    const sc = selected && selected.kind === 'comp' ? compById(selected.id) : null;
+    $('btnRotate').disabled = !sc;
     $('btnDelete').disabled = !selected;
+    $('btnFix').disabled = !(sc && (sc.broken || sc.scorched));
+    $('bulbRating').disabled = !(sc && isBulb(sc.type));
+    $('bulbRating').value = String(sc && isBulb(sc.type) ? ratingOf(sc) : lastRating);
     save();
+  }
+  function updateWarn() {
+    const el = $('warn');
+    if (result && result.short) {
+      el.className = ''; el.style.display = 'block';
+      el.textContent = performance.now() - shortSince > SCORCH_MS
+        ? '🔥 불이 났어요! 합선된 전선을 바로 떼어 주세요!'
+        : '⚡ 합선! 전지의 두 극이 전구 없이 바로 이어져 뜨거워지고 있어요!';
+    } else if (performance.now() - lastBurst < 4000) {
+      el.className = 'burst'; el.style.display = 'block';
+      el.textContent = '💥 펑! 전구가 견딜 수 있는 전압보다 높아서 전구가 터졌어요.';
+    } else el.style.display = 'none';
+  }
+
+  // ---------- 전기 안전 안내 ----------
+  const SAFETY = {
+    short: ['⚠ 전기 안전: 합선은 위험해요!',
+      '전지의 (+)극과 (−)극을 전구 없이 전선으로 바로 이으면 아주 큰 전류가 흘러요. 전선과 전지가 뜨거워져 <b>불이 나거나 전지가 터질 수</b> 있어요. 실제로는 절대 하면 안 돼요. 콘센트 구멍에 쇠붙이를 넣는 것도 매우 위험해요!'],
+    burst: ['⚠ 전기 안전: 알맞은 전압을 써요!',
+      '전구마다 견딜 수 있는 전압(용량)이 정해져 있어요. 전지를 너무 많이 이어 높은 전압을 걸면 필라멘트가 끊어지고 <b>전구가 깨지거나 불이 날 수</b> 있어요. 전기 기구는 정해진 전압에서만 사용해요.'],
+  };
+  let safetyTimer = 0;
+  function showSafety(kind) {
+    const [t, m] = SAFETY[kind], el = $('safety');
+    el.querySelector('.t').textContent = t; el.querySelector('.m').innerHTML = m; el.style.display = 'block';
+    clearTimeout(safetyTimer); safetyTimer = setTimeout(() => { el.style.display = 'none'; }, 15000);
+  }
+  $('safetyClose').onclick = () => { $('safety').style.display = 'none'; };
+
+  // ---------- 효과 (불꽃·연기·펑) ----------
+  let parts = [], emitters = [];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  function spawn(kind, x, y, n) {
+    for (let i = 0; i < n; i++) {
+      const a = rnd(0, Math.PI * 2), sp = kind === 'spark' ? rnd(120, 380) : kind === 'shard' ? rnd(150, 420) : rnd(10, 40);
+      parts.push({ kind, x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'smoke' ? 40 : 60),
+        life: 0, max: kind === 'smoke' ? rnd(1.6, 2.6) : kind === 'shard' ? rnd(0.7, 1.1) : rnd(0.25, 0.6), rot: rnd(0, 360) });
+    }
+  }
+  function glassPos(c) {
+    const ly = c.type === 'bare' ? -52 : -46, a = c.rot * Math.PI / 180;
+    return { x: c.x - ly * Math.sin(a), y: c.y + ly * Math.cos(a) };
+  }
+  function burstFx(c, ratio) {
+    const p = glassPos(c);
+    lastBurst = performance.now();
+    parts.push({ kind: 'flash', x: p.x, y: p.y, life: 0, max: 0.45 });
+    parts.push({ kind: 'boom', x: p.x, y: p.y - 10, life: 0, max: 1.2 });
+    spawn('shard', p.x, p.y, 16); spawn('spark', p.x, p.y, 18);
+    emitters.push({ x: p.x, y: p.y, until: performance.now() + 3000, kind: 'smoke' });
+    if (ratio > 2) emitters.push({ x: p.x, y: p.y + 10, until: performance.now() + 2500, kind: 'fire' }); // 전압이 아주 높으면 불까지
+    sound('pop'); showSafety('burst');
+  }
+  function stepFx(dt, now) {
+    // 합선: 불꽃이 튀고, 오래 계속되면 불이 붙는다
+    const burning = result && result.short && now - shortSince > SCORCH_MS;
+    if (result && result.short) for (const h of hot) {
+      if (Math.random() < 0.6) spawn('spark', h.x + rnd(-30, 30), h.y + rnd(-12, 12), 1);
+      if (burning && Math.random() < 0.25) spawn('smoke', h.x + rnd(-20, 20), h.y - 30, 1);
+      if (burning && h.c && !h.c.scorched) { h.c.scorched = true; render(); }
+      if (Math.random() < 0.05) sound('crackle');
+    }
+    emitters = emitters.filter(e => e.until > now);
+    for (const e of emitters) if (Math.random() < 0.3) spawn('smoke', e.x + rnd(-10, 10), e.y, 1);
+    let h = '';
+    const flames = (burning ? hot : []).concat(emitters.filter(e => e.kind === 'fire'));
+    flames.forEach((f, i) => {
+      const s = 46 + 10 * Math.sin(now / 90 + i * 2) + rnd(-3, 3);
+      h += `<text x="${f.x}" y="${f.y - 6}" font-size="${s}" text-anchor="middle" opacity=".95">🔥</text>`;
+      h += `<text x="${f.x - 26}" y="${f.y + 6}" font-size="${s * 0.6}" text-anchor="middle" opacity=".85">🔥</text>`;
+    });
+    parts = parts.filter(p => (p.life += dt) < p.max);
+    for (const p of parts) {
+      const t = p.life / p.max;
+      if (p.kind !== 'flash' && p.kind !== 'boom') {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.kind === 'smoke') p.vy -= 20 * dt; else p.vy += 600 * dt;
+      }
+      if (p.kind === 'spark') h += `<circle cx="${p.x}" cy="${p.y}" r="${3.5 * (1 - t) + 1}" fill="${t < 0.4 ? '#fffde7' : '#ffb300'}"/>`;
+      else if (p.kind === 'shard') h += `<path d="M0 -7 L5 5 L-5 4 Z" transform="translate(${p.x},${p.y}) rotate(${p.rot + t * 500})" fill="#cfe8ff" stroke="#7aa6c9" opacity="${1 - t}"/>`;
+      else if (p.kind === 'smoke') h += `<circle cx="${p.x}" cy="${p.y}" r="${12 + 30 * t}" fill="#6d6d6d" opacity="${0.45 * (1 - t)}"/>`;
+      else if (p.kind === 'flash') h += `<circle cx="${p.x}" cy="${p.y}" r="${30 + 160 * t}" fill="#fff8c4" opacity="${0.9 * (1 - t)}"/>`;
+      else if (p.kind === 'boom') h += `<text x="${p.x}" y="${p.y}" font-size="${60 + 30 * Math.min(t * 4, 1)}" font-weight="900" text-anchor="middle" fill="#e53935" stroke="#fff" stroke-width="4" paint-order="stroke" opacity="${t < 0.7 ? 1 : (1 - t) / 0.3}">💥펑!</text>`;
+    }
+    gFx.innerHTML = h;
+    updateWarn();
+  }
+
+  // ---------- 소리 ----------
+  let actx = null;
+  function sound(kind) {
+    if (!$('chkSound').checked) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const dur = kind === 'pop' ? 0.45 : 0.06, n = actx.sampleRate * dur, buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, kind === 'pop' ? 3 : 6);
+      const src = actx.createBufferSource(), g = actx.createGain(), f = actx.createBiquadFilter();
+      f.type = kind === 'pop' ? 'lowpass' : 'highpass'; f.frequency.value = kind === 'pop' ? 1200 : 2500;
+      g.gain.value = kind === 'pop' ? 0.6 : 0.25;
+      src.buffer = buf; src.connect(f); f.connect(g); g.connect(actx.destination); src.start();
+    } catch (_) {}
   }
 
   function buildDots() {
@@ -421,12 +599,13 @@
       });
     }
   }
-  function loop(t) { const dt = Math.min(0.05, (t - last) / 1000); last = t; stepDots(dt); requestAnimationFrame(loop); }
+  function loop(t) { const dt = Math.min(0.05, (t - last) / 1000); last = t; stepDots(dt); stepFx(dt, t); requestAnimationFrame(loop); }
   requestAnimationFrame(loop);
 
   // ---------- 조작 ----------
   function addComp(type, x, y) {
     const c = { id: nextId++, type, x, y, rot: 0, closed: false };
+    if (isBulb(type)) c.rating = lastRating;
     comps.push(c); selected = { kind: 'comp', id: c.id }; return c;
   }
   function clamp(c) { c.x = Math.max(60, Math.min(W - 60, c.x)); c.y = Math.max(60, Math.min(H - 60, c.y)); }
@@ -547,6 +726,16 @@
   $('btnRotate').onclick = rotateSelected;
   $('btnDelete').onclick = deleteSelected;
   $('btnClear').onclick = () => { if (!comps.length || confirm('모든 부품과 전선을 지울까요?')) { comps = []; wires = []; selected = null; render(); } };
+  $('btnFix').onclick = () => {
+    const c = selected && selected.kind === 'comp' && compById(selected.id);
+    if (c) { c.broken = false; c.scorched = false; render(); }
+  };
+  $('bulbRating').onchange = e => {
+    lastRating = +e.target.value;
+    const c = selected && selected.kind === 'comp' && compById(selected.id);
+    if (c && isBulb(c.type)) c.rating = lastRating;
+    render();
+  };
   $('chkFlow').onchange = render;
   $('chkBright').onchange = render;
 
@@ -563,6 +752,11 @@
     } else if (name === 'batSeries') {
       const b1 = B(400, 620), b2 = B(680, 620), s = S(980, 620), l = L(700, 300);
       wire(b1, 1, b2, 0); wire(b2, 1, s, 0); wire(s, 1, l, 1); wire(l, 0, b1, 0);
+    } else if (name === 'batSeries3' || name === 'burst') {
+      const n = name === 'burst' ? 4 : 3, x0 = 700 - (n - 1) * 130;
+      const bs = Array.from({ length: n }, (_, i) => addComp('cell', x0 + i * 154, 640));
+      const s = S(1000, 380, name !== 'burst'), l = L(560, 300);
+      wire(bs[n - 1], 1, s, 1); wire(s, 0, l, 1); wire(l, 0, bs[0], 0);
     } else if (name === 'batParallel') {
       const b1 = B(520, 540), b2 = B(520, 720), s = S(920, 540), l = L(720, 260);
       wire(b1, 1, b2, 1); wire(b1, 0, b2, 0); wire(b1, 1, s, 0); wire(s, 1, l, 1); wire(l, 0, b1, 0);
