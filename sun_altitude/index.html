@@ -158,6 +158,7 @@
         <li><b>각도기 보기</b>를 누르고 실과 그림자 사이의 각을 읽어요. 이 각이 <b>태양 고도</b>예요.</li>
         <li>읽은 값을 <b>측정한 태양 고도 확인</b>에 넣고 <b>확인</b>을 눌러 맞게 쟀는지 점검해요.</li>
       </ol>
+      <p class="hint" style="margin-top:8px">캐릭터: Mini · © 2026 Brendy.Net (VRoid Studio로 만듦)</p>
     </div>
   </aside>
 </main>
@@ -167,12 +168,15 @@
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
 } }
 </script>
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
 /* =====================================================================
    태양 위치 계산 (NOAA 간이식, 오차 약 0.5° 이내)
@@ -470,7 +474,64 @@ function makeStudent() {
   add(new THREE.SphereGeometry(0.011, 8, 8), mic, 0.075, HY - 0.06, 0.105);
   return g;
 }
-const student = makeStudent();
+// 학생: VRoid로 만든 캐릭터 'Mini'를 불러온다. 불러오는 동안(또는 실패하면) 도형으로 만든 캐릭터를 보여 준다.
+const student = new THREE.Group();
+const fallbackBody = makeStudent();
+student.add(fallbackBody);
+let vrm = null, vrmFrames = 0, vrmFitted = false;
+{
+  const loader = new GLTFLoader();
+  loader.register(parser => new VRMLoaderPlugin(parser));
+  loader.load('mini.vrm', gltf => {
+    const v = gltf.userData.vrm;
+    if (!v) return;
+    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+    VRMUtils.combineSkeletons(gltf.scene);
+    VRMUtils.rotateVRM0(v);   // VRM 0.x 모델도 +Z(앞)를 보게
+    v.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+    if (v.lookAt) v.lookAt.target = camera;          // 눈이 카메라를 바라본다
+    student.remove(fallbackBody);
+    student.add(v.scene);
+    vrmFrames = 0; vrmFitted = false;
+    vrm = v;
+  }, undefined, err => console.warn('캐릭터(mini.vrm)를 불러오지 못해 기본 캐릭터를 보여 줍니다.', err));
+}
+
+// 캐릭터 움직임: 팔 내리기, 걸을 때 다리·팔 흔들기, 숨쉬기, 눈 깜빡이기
+let walkPhase = 0, blinkAt = 2, lastT = 0;
+function animateCharacter(t, moved) {
+  if (!vrm) return;
+  const dt = Math.min(0.1, Math.max(0.001, (t - lastT) / 1000));
+  const bone = n => vrm.humanoid.getNormalizedBoneNode(n);
+  const walk = Math.min(1, (moved / dt) / 0.6);       // 0: 서 있음, 1: 걷는 중
+  walkPhase += moved * 9;
+  const sw = Math.sin(walkPhase) * 0.5 * walk;
+  const set = (n, x, y, z) => { const b = bone(n); if (b) b.rotation.set(x, y, z); };
+  set('leftUpperLeg', sw, 0, 0); set('rightUpperLeg', -sw, 0, 0);
+  set('leftLowerLeg', Math.max(0, -sw) * 1.1, 0, 0); set('rightLowerLeg', Math.max(0, sw) * 1.1, 0, 0);
+  set('leftUpperArm', -sw * 0.7, 0, -1.38); set('rightUpperArm', sw * 0.7, 0, 1.38);
+  set('leftLowerArm', 0, -0.12, 0); set('rightLowerArm', 0, 0.12, 0);
+  const breath = Math.sin(t / 650) * 0.025;
+  set('spine', breath, 0, 0); set('chest', breath * 0.6, 0, 0);
+  const em = vrm.expressionManager;
+  if (em) {
+    const s = t / 1000;
+    if (s > blinkAt + 0.16) blinkAt = s + 2.5 + Math.random() * 3;
+    em.setValue('blink', s > blinkAt ? Math.sin((s - blinkAt) / 0.16 * Math.PI) : 0);
+    em.setValue('happy', 0.25);
+  }
+  student.updateMatrixWorld(true);
+  vrm.update(dt);
+  // 자세를 잡은 뒤 키를 재서 정확히 1.5 m로 맞추고 발을 바닥에 붙인다 (막대는 키의 두 배)
+  if (!vrmFitted && ++vrmFrames > 2) {
+    vrmFitted = true;
+    const box = new THREE.Box3().setFromObject(vrm.scene, true);
+    vrm.scene.scale.multiplyScalar(STUDENT_HEIGHT / (box.max.y - box.min.y));
+    vrm.scene.updateMatrixWorld(true);
+    box.setFromObject(vrm.scene, true);
+    vrm.scene.position.y += student.position.y - box.min.y;
+  }
+}
 const studentHome = new THREE.Vector3(-1.5, 0, 0.9);
 const studentTarget = studentHome.clone();
 student.position.copy(studentHome);
@@ -1018,11 +1079,14 @@ function tick(t) {
     if (side.lengthSq() > 1e-6) side.normalize().multiplyScalar(0.5);
     studentTarget.copy(toEnd).add(side);
   }
+  const before = student.position.clone();
   student.position.lerp(studentTarget, 0.08);
   const onBoard = apparatus && Math.abs(student.position.x) < apparatus.half && Math.abs(student.position.z) < apparatus.half;
   student.position.y = onBoard ? BOARD_TOP : 0;
   const face = new THREE.Vector3(0, student.position.y, 0);
   if (student.position.distanceTo(face) > 0.05) student.lookAt(face);
+  animateCharacter(t, Math.hypot(student.position.x - before.x, student.position.z - before.z));
+  lastT = t;
 
   if (pulse.visible) {
     const s = 1 + 0.35 * Math.sin(t / 260);
