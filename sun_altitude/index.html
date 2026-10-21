@@ -49,6 +49,10 @@
   .row label{font-weight:700;min-width:58px}
   input[type=number]{font:inherit;font-size:16px;width:84px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink);text-align:right}
   input[type=number].short{width:58px}
+  input[type=number].yr{width:76px}
+  .step{font-size:13px;padding:5px 9px}
+  .row.days{padding-left:64px}
+  .row.days .step{flex:1}
   input[type=number]:focus{outline:2px solid var(--accent);outline-offset:1px}
   input[type=range]{width:100%;accent-color:var(--accent)}
   .hint{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
@@ -99,6 +103,7 @@
     <div class="camBtns">
       <button data-cam="home">↺ 처음 시점</button>
       <button data-cam="sky">☀️ 해 보기</button>
+      <button data-cam="moon">🌙 달 보기</button>
       <button data-cam="top">위에서 보기</button>
     </div>
   </div>
@@ -130,12 +135,14 @@
 
     <fieldset>
       <legend>🕒 날짜와 현지 시각</legend>
+      <div class="row"><label for="year">연도</label><input type="number" class="yr" id="year" min="1900" max="2100" step="1"> 년</div>
       <div class="row"><label for="month">날짜</label><input type="number" class="short" id="month" min="1" max="12" step="1"> 월
         <input type="number" class="short" id="day" min="1" max="31" step="1" aria-label="일"> 일</div>
+      <div class="row days"><button class="step" id="prevDay">◀ 하루 전</button><button class="step" id="nextDay">하루 뒤 ▶</button></div>
       <div class="row"><label for="hour">시각</label><input type="number" class="short" id="hour" min="0" max="23" step="1"> 시
         <input type="number" class="short" id="minute" min="0" max="59" step="1" aria-label="분"> 분</div>
       <input type="range" id="slider" min="0" max="1435" step="5" aria-label="시각 바꾸기">
-      <p class="hint">막대를 따라 시각을 옮겨 보면 그림자가 어떻게 바뀌는지 볼 수 있어요.</p>
+      <p class="hint">시각 막대를 옮기면 그림자가 어떻게 바뀌는지 볼 수 있어요. 밤 시각에 <b>하루 전·하루 뒤</b>를 눌러 가며 <b>달 보기</b>를 하면 달의 모양과 위치 변화를 관찰할 수 있어요.</p>
     </fieldset>
 
     <div class="answer">
@@ -196,6 +203,63 @@ function solarPosition(lat, lon, year, month, day, hour, minute, utcOffset) {
   const az = (Math.atan2(Math.sin(ha), Math.cos(ha) * Math.sin(la) - Math.tan(dec) * Math.cos(la)) / D2R + 180 + 360) % 360;
   return { alt, az };
 }
+/* =====================================================================
+   달 위치와 모양 (위치 오차 약 0.1° 이내)
+   ===================================================================== */
+// 달 위치와 모양 (Paul Schlyter의 방법, 섭동 항 포함, 지형 시차 보정)
+const rev = x => ((x % 360) + 360) % 360;
+const sind = x => Math.sin(x * D2R), cosd = x => Math.cos(x * D2R);
+function moonPosition(lat, lon, year, month, day, hour, minute, utcOffset) {
+  const ms = Date.UTC(year, month - 1, day, 0, 0) + ((hour - utcOffset) * 60 + minute) * 60000;
+  const d = (ms - Date.UTC(1999, 11, 31, 0, 0)) / 86400000;   // 2000년 1월 0.0일(UT)부터 지난 날수
+  const UT = ((ms / 3600000) % 24 + 24) % 24;
+  // 태양
+  const ws = 282.9404 + 4.70935e-5 * d, es = 0.016709 - 1.151e-9 * d, Ms = rev(356.0470 + 0.9856002585 * d);
+  const Es = Ms + es / D2R * sind(Ms) * (1 + es * cosd(Ms));
+  const xs = cosd(Es) - es, ys = Math.sqrt(1 - es * es) * sind(Es);
+  const sunLon = rev(Math.atan2(ys, xs) / D2R + ws);
+  // 달 궤도 요소
+  const N = rev(125.1228 - 0.0529538083 * d), i = 5.1454, w = rev(318.0634 + 0.1643573223 * d);
+  const a = 60.2666, e = 0.054900, M = rev(115.3654 + 13.0649929509 * d);
+  let E = M + e / D2R * sind(M) * (1 + e * cosd(M));
+  for (let k = 0; k < 6; k++) E = E - (E - e / D2R * sind(E) - M) / (1 - e * cosd(E));
+  const xv = a * (cosd(E) - e), yv = a * Math.sqrt(1 - e * e) * sind(E);
+  const v = Math.atan2(yv, xv) / D2R; let r = Math.hypot(xv, yv);
+  const xh = r * (cosd(N) * cosd(v + w) - sind(N) * sind(v + w) * cosd(i));
+  const yh = r * (sind(N) * cosd(v + w) + cosd(N) * sind(v + w) * cosd(i));
+  const zh = r * (sind(v + w) * sind(i));
+  let mLon = Math.atan2(yh, xh) / D2R, mLat = Math.atan2(zh, Math.hypot(xh, yh)) / D2R;
+  // 섭동
+  const Ls = rev(Ms + ws), Lm = rev(M + w + N), Dm = rev(Lm - Ls), F = rev(Lm - N), Mm = M;
+  mLon += -1.274 * sind(Mm - 2 * Dm) + 0.658 * sind(2 * Dm) - 0.186 * sind(Ms) - 0.059 * sind(2 * Mm - 2 * Dm)
+    - 0.057 * sind(Mm - 2 * Dm + Ms) + 0.053 * sind(Mm + 2 * Dm) + 0.046 * sind(2 * Dm - Ms) + 0.041 * sind(Mm - Ms)
+    - 0.035 * sind(Dm) - 0.031 * sind(Mm + Ms) - 0.015 * sind(2 * F - 2 * Dm) + 0.011 * sind(Mm - 4 * Dm);
+  mLat += -0.173 * sind(F - 2 * Dm) - 0.055 * sind(Mm - F - 2 * Dm) - 0.046 * sind(Mm + F - 2 * Dm)
+    + 0.033 * sind(F + 2 * Dm) + 0.017 * sind(2 * Mm + F);
+  r += -0.58 * cosd(Mm - 2 * Dm) - 0.46 * cosd(2 * Dm);
+  // 황도 → 적도 → 지평 좌표
+  const ecl = 23.4393 - 3.563e-7 * d;
+  const xg = cosd(mLon) * cosd(mLat), yg = sind(mLon) * cosd(mLat), zg = sind(mLat);
+  const xe = xg, ye = yg * cosd(ecl) - zg * sind(ecl), ze = yg * sind(ecl) + zg * cosd(ecl);
+  const RA = Math.atan2(ye, xe) / D2R, Dec = Math.atan2(ze, Math.hypot(xe, ye)) / D2R;
+  const LST = rev(Ls + 180 + UT * 15 + lon);
+  const HA = rev(LST - RA);
+  const x = cosd(HA) * cosd(Dec), y = sind(HA) * cosd(Dec), z = sind(Dec);
+  const xhor = x * sind(lat) - z * cosd(lat), zhor = x * cosd(lat) + z * sind(lat);
+  let alt = Math.asin(Math.max(-1, Math.min(1, zhor))) / D2R;
+  const az = rev(Math.atan2(y, xhor) / D2R + 180);
+  alt -= Math.asin(1 / r) / D2R * cosd(alt);   // 지형 시차: 관측자는 지구 표면에 있다
+  const waxing = rev(mLon - sunLon) < 180;
+  const elong = Math.acos(cosd(mLon - sunLon) * cosd(mLat)) / D2R;
+  return { alt, az, waxing, elong, illum: (1 - cosd(elong)) / 2 };
+}
+function moonName(illum, waxing) {
+  if (illum < 0.03) return '삭';
+  if (illum > 0.97) return '보름달';
+  if (waxing) return illum < 0.35 ? '초승달' : illum < 0.65 ? '상현달' : '상현달과 보름달 사이의 달';
+  return illum < 0.35 ? '그믐달' : illum < 0.65 ? '하현달' : '보름달과 하현달 사이의 달';
+}
+
 const sunVector = (alt, az) => new THREE.Vector3(
   Math.cos(alt * D2R) * Math.sin(az * D2R), Math.sin(alt * D2R), -Math.cos(alt * D2R) * Math.cos(az * D2R));
 
@@ -214,9 +278,10 @@ const PROTRACTOR_R = 1.0;
    설정과 상태
    ===================================================================== */
 const now = new Date();
-const year = now.getFullYear();
-const settings = { lat: 37.57, lon: 126.98, tz: 9, month: now.getMonth() + 1, day: now.getDate(), hour: 12, minute: 30 };
+const settings = { lat: 37.57, lon: 126.98, tz: 9, year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate(), hour: 12, minute: 30 };
 let sun = { alt: 0, az: 0, dir: new THREE.Vector3(0, 1, 0) };
+let moon = { alt: -90, az: 0, dir: new THREE.Vector3(0, -1, 0), illum: 0, waxing: true, name: '삭' };
+const moonVisible = () => moon.alt > -0.5 && moon.illum >= 0.03;
 let apparatus = null;      // { half, tip, length, note, raise }
 let stringState = 'idle';  // idle | drag | placed
 const stringEnd = new THREE.Vector3();
@@ -243,8 +308,8 @@ camera.position.copy(HOME.pos);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.copy(HOME.target);
 controls.enableDamping = true;
-let followSun = false;      // 해 보기 중이면 해를 따라 카메라를 돌린다
-controls.addEventListener('start', () => { if (!camTween) followSun = false; });
+let followTarget = null;    // 'sun' | 'moon': 해·달 보기 중이면 그쪽을 따라 카메라를 돌린다
+controls.addEventListener('start', () => { if (!camTween) followTarget = null; });
 controls.maxPolarAngle = Math.PI * 0.92;
 controls.minDistance = 1.2;
 controls.maxDistance = 45;
@@ -279,6 +344,49 @@ function makeGlowTexture() {
 const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTexture(), fog: false, depthWrite: false, transparent: true }));
 sunSprite.scale.set(70, 70, 1);
 scene.add(sunSprite);
+
+// 하늘의 달: 날짜에 맞는 모양을 그리고, 밝은 쪽이 항상 해를 향하도록 돌린다
+const moonCanvas = document.createElement('canvas'); moonCanvas.width = moonCanvas.height = 256;
+const moonTex = new THREE.CanvasTexture(moonCanvas); moonTex.colorSpace = THREE.SRGBColorSpace;
+const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: moonTex, fog: false, depthWrite: false, transparent: true }));
+moonSprite.scale.set(26, 26, 1);
+scene.add(moonSprite);
+let drawnIllum = -1;
+function drawMoon(k) {  // k: 밝게 보이는 비율 (0 = 삭, 1 = 보름). 그림의 오른쪽이 해 쪽
+  if (Math.abs(k - drawnIllum) < 0.002) return;
+  drawnIllum = k;
+  const g = moonCanvas.getContext('2d'), c = 128, r = 92;
+  g.clearRect(0, 0, 256, 256);
+  const halo = g.createRadialGradient(c, c, r * 0.95, c, c, 128);
+  halo.addColorStop(0, `rgba(255,250,225,${0.06 + 0.22 * k})`); halo.addColorStop(1, 'rgba(255,250,225,0)');
+  g.fillStyle = halo; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = 'rgba(150,160,190,0.2)';           // 어두운 쪽도 희미하게 보인다
+  g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.fill();
+  const w = r * Math.abs(2 * k - 1);
+  g.beginPath(); g.moveTo(c, c - r);
+  g.arc(c, c, r, -Math.PI / 2, Math.PI / 2, false);               // 해 쪽 반원
+  if (k >= 0.5) g.ellipse(c, c, w, r, 0, Math.PI / 2, Math.PI * 1.5, false);  // 볼록한 달
+  else g.ellipse(c, c, w, r, 0, Math.PI / 2, -Math.PI / 2, true);            // 가는 달
+  g.closePath();
+  const grad = g.createRadialGradient(c - 22, c - 22, 8, c, c, r);
+  grad.addColorStop(0, '#fffdf2'); grad.addColorStop(1, '#e6dfc0');
+  g.fillStyle = grad; g.fill();
+  g.save(); g.clip();
+  g.fillStyle = 'rgba(140,135,115,0.26)';
+  for (const [x, y, rr] of [[-22, -26, 22], [16, -12, 17], [-6, 22, 19], [30, 28, 11], [-38, 8, 12], [36, -34, 9]]) { g.beginPath(); g.arc(c + x, c + y, rr, 0, Math.PI * 2); g.fill(); }
+  g.restore();
+  moonTex.needsUpdate = true;
+}
+const _p0 = new THREE.Vector3(), _p1 = new THREE.Vector3(), _toSun = new THREE.Vector3();
+function placeMoonSprite() {
+  moonSprite.position.copy(camera.position).addScaledVector(moon.dir, 300);
+  _toSun.copy(sun.dir).addScaledVector(moon.dir, -moon.dir.dot(sun.dir));   // 하늘 위에서 달 → 해 방향
+  if (_toSun.lengthSq() < 1e-10) return;
+  _toSun.normalize();
+  _p0.copy(moonSprite.position).project(camera);
+  _p1.copy(moonSprite.position).addScaledVector(_toSun, 6).project(camera);
+  moonSprite.material.rotation = Math.atan2(_p1.y - _p0.y, (_p1.x - _p0.x) * camera.aspect);
+}
 
 // 학생 (키 1.5 m): 아이돌 무대 의상을 입은 창작 캐릭터
 function makeStudent() {
@@ -483,6 +591,7 @@ const FIELDS = {
   lat: { el: $('lat'), min: -90, max: 90, fmt: v => v.toFixed(2) },
   lon: { el: $('lon'), min: -180, max: 180, fmt: v => v.toFixed(2) },
   tz: { el: $('tz'), min: -12, max: 14, fmt: v => String(+v.toFixed(2)) },
+  year: { el: $('year'), min: 1900, max: 2100, int: true, fmt: String },
   month: { el: $('month'), min: 1, max: 12, int: true, fmt: String },
   day: { el: $('day'), min: 1, max: 31, int: true, fmt: String },
   hour: { el: $('hour'), min: 0, max: 23, int: true, fmt: String },
@@ -503,6 +612,15 @@ for (const [k, f] of Object.entries(FIELDS)) {
     applySun(true);
   });
 }
+function shiftDay(delta) {
+  const t = new Date(Date.UTC(settings.year, settings.month - 1, settings.day + delta));
+  const y = t.getUTCFullYear();
+  if (y < 1900 || y > 2100) return;
+  settings.year = y; settings.month = t.getUTCMonth() + 1; settings.day = t.getUTCDate();
+  applySun(true);
+}
+$('prevDay').addEventListener('click', () => shiftDay(-1));
+$('nextDay').addEventListener('click', () => shiftDay(1));
 slider.addEventListener('input', () => {
   const m = +slider.value;
   settings.hour = Math.floor(m / 60); settings.minute = m % 60;
@@ -557,6 +675,10 @@ function refreshAnswer() {
   } else {
     answerOut.innerHTML = `태양이 지평선 아래에 있어요 (고도 ${sun.alt.toFixed(1)}°)`;
   }
+  const lit = Math.round(moon.illum * 100);
+  answerOut.innerHTML += moon.alt > -0.5
+    ? `<br>달: <b>${moon.name}</b> (밝은 부분 ${lit}%) · 고도 ${moon.alt.toFixed(1)}° · <b>${compassName(moon.az)}</b>쪽 하늘`
+    : `<br>달: <b>${moon.name}</b> (밝은 부분 ${lit}%) · 지금은 지평선 아래에 있어요`;
 }
 
 /* =====================================================================
@@ -580,7 +702,13 @@ function updateSky() {
   sunLight.position.copy(sun.dir).multiplyScalar(45);
   sunLight.target.position.set(0, 0, 0);
   sunSprite.visible = sun.alt > -1.5;
-  badge.textContent = sun.alt > 0 ? '☀️ 태양이 떠 있어요' : '🌙 태양이 지평선 아래에 있어요';
+  // 달: 밤에는 또렷하게, 낮에는 희미하게(낮달). 달빛이 땅을 조금 밝힌다
+  drawMoon(moon.illum);
+  moonSprite.visible = moonVisible();
+  moonSprite.material.opacity = sun.alt > 6 ? 0.55 : sun.alt > -6 ? 0.55 + 0.45 * (6 - sun.alt) / 12 : 1;
+  if (moon.alt > 0 && sun.alt < 0) hemi.intensity += 0.22 * moon.illum * Math.min(1, moon.alt / 10);
+  if (sun.alt > 0) badge.textContent = '☀️ 태양이 떠 있어요' + (moonVisible() ? ` · 🌙 낮달(${moon.name})도 떠 있어요` : '');
+  else badge.textContent = moonVisible() ? `🌙 ${moon.name}이 떠 있어요` : '🌙 해와 달이 모두 지평선 아래에 있어요';
 }
 
 function setBoardHalf(half) {
@@ -617,12 +745,15 @@ function noteMessage() {
 }
 
 function applySun(announce) {
-  settings.day = Math.min(settings.day, daysInMonth(year, settings.month));
+  settings.day = Math.min(settings.day, daysInMonth(settings.year, settings.month));
   refreshFields();
-  const p = solarPosition(settings.lat, settings.lon, year, settings.month, settings.day, settings.hour, settings.minute, settings.tz);
+  const st = settings;
+  const p = solarPosition(st.lat, st.lon, st.year, st.month, st.day, st.hour, st.minute, st.tz);
   sun = { alt: p.alt, az: p.az, dir: sunVector(p.alt, p.az) };
+  const m = moonPosition(st.lat, st.lon, st.year, st.month, st.day, st.hour, st.minute, st.tz);
+  moon = { alt: m.alt, az: m.az, dir: sunVector(m.alt, m.az), illum: m.illum, waxing: m.waxing, name: moonName(m.illum, m.waxing) };
   updateSky();
-  if (followSun && !viewSaved) skyView(true);
+  if (followTarget && !viewSaved) skyView(followTarget, true);
 
   let moved = false;
   if (apparatus) {
@@ -784,7 +915,7 @@ function flyTo(pos, target, ms = 650, fov = FOV) {
     f0: camera.fov, f1: fov, start: performance.now(), ms };
 }
 function enterView() {
-  followSun = false;
+  followTarget = null;
   if (!protractorShown || !apparatus || !apparatus.tip) return;
   const tip = apparatus.tip;
   const u = new THREE.Vector3().subVectors(ROD_BASE, tip).setY(0).normalize();
@@ -820,28 +951,34 @@ $('measured').addEventListener('keydown', e => { if (e.key === 'Enter') checkMea
 answerBtn.addEventListener('click', () => { answerShown = !answerShown; refreshAnswer(); });
 document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
   if (viewSaved) exitView(true);
-  followSun = false;
+  followTarget = null;
   if (b.dataset.cam === 'top') flyTo(new THREE.Vector3(0.01, 24, 0.6), new THREE.Vector3(0, 0, 0));
-  else if (b.dataset.cam === 'sky') skyView();
+  else if (b.dataset.cam === 'sky') skyView('sun');
+  else if (b.dataset.cam === 'moon') skyView('moon');
   else flyTo(HOME.pos, HOME.target);
 }));
 
-// 해 보기: 해를 등지지 않고 해 쪽을 바라보며, 막대·그림자와 하늘의 해가 한 화면에 함께 들어오게 한다
-function skyView(quiet) {
-  followSun = true;
-  const horiz = new THREE.Vector3(sun.dir.x, 0, sun.dir.z);
+// 해·달 보기: 그쪽을 바라보며, 막대·그림자와 하늘의 해(달)가 한 화면에 함께 들어오게 한다
+function skyView(kind, quiet) {
+  followTarget = kind;
+  const body = kind === 'moon' ? moon : sun;
+  const horiz = new THREE.Vector3(body.dir.x, 0, body.dir.z);
   if (horiz.lengthSq() < 1e-6) horiz.set(0, 0, 1);
   horiz.normalize();
   const D = 6.5, eyeHeight = 1.6;
-  const eye = horiz.clone().multiplyScalar(-D).setY(eyeHeight);   // 막대를 사이에 두고 해의 반대편에 선다
+  const eye = horiz.clone().multiplyScalar(-D).setY(eyeHeight);   // 막대를 사이에 두고 해(달)의 반대편에 선다
   const low = -Math.atan2(eyeHeight, D) / D2R - 4;                 // 막대 밑동보다 조금 아래까지
-  const high = Math.min(Math.max(sun.alt, 8) + 10, 89);             // 해보다 조금 위까지
+  const high = Math.min(Math.max(body.alt, 8) + 10, 89);            // 해(달)보다 조금 위까지
   const fov = Math.min(105, Math.max(FOV, high - low + 6));
   const mid = (low + high) / 2 * D2R;
   const look = horiz.clone().multiplyScalar(Math.cos(mid)).setY(Math.sin(mid));
   flyTo(eye, eye.clone().addScaledVector(look, 6), quiet ? 350 : 800, fov);
   if (quiet) return;
-  if (sun.alt > 0) say(`해가 하늘의 어느 쪽, 얼마나 높이 떠 있는지 살펴보세요. 시각 막대를 움직이면 해가 하늘을 따라 움직여요. 화면을 끌면 하늘을 둘러볼 수 있어요.`);
+  if (kind === 'moon') {
+    if (moon.alt <= -0.5) say(`지금은 달(${moon.name})이 지평선 아래에 있어서 보이지 않아요. 다른 시각이나 날짜를 넣어 보세요.`, 'bad');
+    else if (moon.illum < 0.03) say('오늘은 달이 해와 거의 같은 쪽에 있는 <b>삭</b>이라서 달이 보이지 않아요. <b>하루 뒤</b>를 몇 번 눌러 보세요.', 'bad');
+    else say(`<b>${moon.name}</b>이 ${compassName(moon.az)}쪽 하늘에 떠 있어요. 같은 시각에 <b>하루 뒤</b>를 눌러 가며 달의 모양과 위치가 어떻게 바뀌는지 관찰해 보세요. 달의 밝은 쪽은 언제나 해를 향해요.`);
+  } else if (sun.alt > 0) say(`해가 하늘의 어느 쪽, 얼마나 높이 떠 있는지 살펴보세요. 시각 막대를 움직이면 해가 하늘을 따라 움직여요. 화면을 끌면 하늘을 둘러볼 수 있어요.`);
   else say('지금은 해가 지평선 아래에 있어서 보이지 않아요. 낮 시각을 넣고 다시 <b>해 보기</b>를 눌러 보세요.', 'bad');
 }
 
@@ -895,6 +1032,7 @@ function tick(t) {
   sunSprite.position.copy(camera.position).addScaledVector(sun.dir, 320);
   controls.update();
   if (camera.position.y < 0.3) camera.position.y = 0.3; // 땅속으로 들어가지 않게
+  placeMoonSprite();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
