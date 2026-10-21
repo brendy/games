@@ -275,6 +275,7 @@ const ROD_HEIGHT = STUDENT_HEIGHT * 2;   // 키의 두 배
 const ROD_RADIUS = 0.03;
 const BOARD_TOP = 0.04;
 const BOARD_MIN_HALF = 3, BOARD_MAX_HALF = 15;
+const GROUND_REACH = 60;                 // 판 밖 땅 위에서 실을 놓을 수 있는 최대 거리(막대에서, m)
 const SNAP_DISTANCE = 0.5;               // 그림자 끝에서 이만큼 안에 놓으면 끝에 맞춰진다
 const PROTRACTOR_R = 1.0;
 
@@ -795,8 +796,7 @@ function refreshShadow() {
   const edge = half / Math.max(Math.abs(d.x), Math.abs(d.z));
   const drawn = Math.min(length, edge);
   apparatus.length = length;
-  if (length <= edge - 0.1) apparatus.tip = ROD_BASE.clone().addScaledVector(d, length);
-  else apparatus.note = 'offboard';
+  if (length <= edge) apparatus.tip = ROD_BASE.clone().addScaledVector(d, length);
   shadowStrip.visible = apparatus.raise >= 1;
   shadowStrip.scale.set(1, 1, drawn);
   shadowStrip.rotation.y = Math.atan2(-d.x, -d.z);
@@ -807,13 +807,19 @@ function refreshShadow() {
     shadowGround.position.set(d.x * groundLength, 0.003, d.z * groundLength);
     shadowGround.rotation.y = Math.atan2(d.x, d.z);   // 그림자 끝에서 판 가장자리 쪽으로 뻗는다
     shadowGround.scale.set(1, 1, groundLength - edge);
+    // 판 밖 땅 위의 그림자 끝에서도 잴 수 있다 (너무 멀면 잴 수 없다)
+    if (groundLength <= GROUND_REACH) {
+      apparatus.tip = new THREE.Vector3(d.x * groundLength, 0, d.z * groundLength);
+      apparatus.note = 'ground';
+    } else apparatus.note = 'offboard';
   }
 }
 function noteMessage() {
   if (!apparatus) return null;
   if (apparatus.note === 'night') return ['지금은 태양이 지평선 아래에 있어서 그림자가 생기지 않아요. 낮 시각을 넣어 보세요.', 'bad'];
   if (apparatus.note === 'overhead') return ['태양이 머리 바로 위에 있어서 그림자가 거의 없어요. 태양 고도는 약 90°예요.', ''];
-  if (apparatus.note === 'offboard') return ['태양이 너무 낮아서 그림자가 판 밖까지 길어졌어요. 다른 시각을 넣어 보세요.', 'bad'];
+  if (apparatus.note === 'ground') return ['해가 낮아서 그림자가 판 밖 땅 위까지 길어졌어요. 빨간 실 끝을 <b>땅 위의 그림자 끝</b>까지 끌고 가서 놓아 보세요. 멀면 화면을 줄여서 보세요.', ''];
+  if (apparatus.note === 'offboard') return ['태양이 너무 낮아서 그림자가 너무 길어요. 이 시각에는 잴 수 없으니 다른 시각을 넣어 보세요.', 'bad'];
   return null;
 }
 
@@ -852,8 +858,8 @@ function refreshStringPose() {
   if (!apparatus) return;
   if (stringState === 'idle') stringEnd.copy(restingEnd);
   setString(ROD_TOP, stringEnd);
-  handle.position.copy(stringEnd).setY(BOARD_TOP); // 구의 중심 = 실 끝 (아래 절반은 판에 잠긴다)
-  pulse.position.copy(stringEnd).setY(BOARD_TOP + 0.004);
+  handle.position.copy(stringEnd);                 // 구의 중심 = 실 끝 (아래 절반은 판·땅에 잠긴다)
+  pulse.position.copy(stringEnd).setY(stringEnd.y + 0.004);
   pulse.visible = stringState === 'idle';
 }
 
@@ -919,7 +925,7 @@ function dropString() {
     showProtractor();
     say('그림자 끝에 실을 놓았어요! <b>각도기 보기</b>를 눌러 실이 가리키는 눈금을 읽고, 아래 <b>측정한 태양 고도 확인</b>에 넣어 보세요.', 'ok');
   } else {
-    const note = noteMessage();
+    const note = apparatus.note !== 'ground' && noteMessage();
     if (note) say(...note);
     else say('실 끝이 그림자 끝에서 벗어났어요. 빨간 실 끝을 다시 끌어서 그림자 끝에 맞춰 보세요.', 'bad');
   }
@@ -931,6 +937,7 @@ function dropString() {
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -BOARD_TOP);
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 let dragging = false;
 function setPointer(e) {
   const r = renderer.domElement.getBoundingClientRect();
@@ -942,12 +949,18 @@ function overHandle(e) {
   setPointer(e);
   return raycaster.intersectObject(handleHit, false).length > 0;
 }
+// 실 끝은 판 위에서는 판 윗면에, 판 밖에서는 땅 위에 놓인다
+const onBoardXZ = (x, z) => Math.abs(x) <= apparatus.half && Math.abs(z) <= apparatus.half;
 function dragTo(e) {
   setPointer(e);
   const p = new THREE.Vector3();
-  if (!raycaster.ray.intersectPlane(boardPlane, p)) return;
-  const lim = apparatus.half - 0.05;
-  stringEnd.set(Math.max(-lim, Math.min(lim, p.x)), BOARD_TOP, Math.max(-lim, Math.min(lim, p.z)));
+  if (raycaster.ray.intersectPlane(boardPlane, p) && onBoardXZ(p.x, p.z)) {
+    stringEnd.set(p.x, BOARD_TOP, p.z);
+  } else if (raycaster.ray.intersectPlane(groundPlane, p)) {
+    const r = Math.hypot(p.x, p.z), k = r > GROUND_REACH ? GROUND_REACH / r : 1;
+    stringEnd.set(p.x * k, 0, p.z * k);
+    if (onBoardXZ(stringEnd.x, stringEnd.z)) stringEnd.y = BOARD_TOP;
+  } else return;
   refreshStringPose();
 }
 const canvas = renderer.domElement;
