@@ -57,6 +57,13 @@
   .msg{border-radius:12px;padding:12px;font-size:15px;line-height:1.55;background:#f7f5ef;border:1px solid var(--line);min-height:64px}
   .msg.ok{background:#e7f6ec;border-color:#9ad4ae;color:#11633a}
   .msg.bad{background:#fdecea;border-color:#f2b1aa;color:#9b1c13}
+  .check{border-color:#f0b45a;background:#fffaf0}
+  .check .row label{min-width:auto}
+  .check input[type=number]{width:90px}
+  .result{border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.55;background:#f7f5ef;border:1px solid var(--line)}
+  .result.ok{background:#e7f6ec;border-color:#9ad4ae;color:#11633a}
+  .result.bad{background:#fdecea;border-color:#f2b1aa;color:#9b1c13}
+  .result .big{font-size:19px;font-weight:800;display:block;margin-bottom:2px}
   .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .actions button{padding:11px 8px;font-size:16px}
   .actions .wide{grid-column:1 / -1}
@@ -104,6 +111,15 @@
       <button id="clearBtn" disabled>🧹 치우기</button>
     </div>
 
+    <fieldset class="check" id="checkBox" hidden>
+      <legend>📝 측정한 태양 고도 확인</legend>
+      <p class="hint">각도기에서 실이 지나는 눈금을 읽어 넣어 보세요.</p>
+      <div class="row"><label for="measured">내가 잰 태양 고도</label>
+        <input type="number" id="measured" min="0" max="180" step="0.5" inputmode="decimal"> °
+        <button class="primary" id="checkBtn">확인</button></div>
+      <div class="result" id="checkMsg" role="status" hidden></div>
+    </fieldset>
+
     <fieldset>
       <legend>📍 장소</legend>
       <div class="row"><label for="lat">위도</label><input type="number" id="lat" step="any" min="-90" max="90"> °</div>
@@ -133,6 +149,7 @@
         <li><b>막대 세우기</b>를 눌러 판 위에 막대를 수직으로 세워요.</li>
         <li>막대 꼭대기에 묶인 <b>빨간 실 끝</b>을 끌어서 그림자 끝에 놓아요.</li>
         <li><b>각도기 보기</b>를 누르고 실과 그림자 사이의 각을 읽어요. 이 각이 <b>태양 고도</b>예요.</li>
+        <li>읽은 값을 <b>측정한 태양 고도 확인</b>에 넣고 <b>확인</b>을 눌러 맞게 쟀는지 점검해요.</li>
       </ol>
     </div>
   </aside>
@@ -263,23 +280,86 @@ const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: makeGlowTextu
 sunSprite.scale.set(70, 70, 1);
 scene.add(sunSprite);
 
-// 학생 (키 1.5 m)
+// 학생 (키 1.5 m): 아이돌 무대 의상을 입은 창작 캐릭터
 function makeStudent() {
   const g = new THREE.Group();
-  const mat = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
-  const skin = mat(0xf2c9a0), shirt = mat(0x3d7be0), pants = mat(0x2b3550), hair = mat(0x2a1d14), shoe = mat(0x222222);
-  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  const mat = (c, r = 0.6) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+  const skin = mat(0xffdcc8), hair = mat(0x6b3f2a, 0.45), top = mat(0xffffff), jacket = mat(0xc9a7ff, 0.5),
+    skirt = mat(0xff8fbf, 0.55), sock = mat(0xffffff), boot = mat(0xf7f2ff, 0.4), ribbon = mat(0xff4f9a, 0.4),
+    eye = mat(0x3a2347, 0.3), shine = new THREE.MeshBasicMaterial({ color: 0xffffff }), blush = new THREE.MeshBasicMaterial({ color: 0xff9db8, transparent: true, opacity: 0.75 }),
+    lip = mat(0xe8577f, 0.4), gold = new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.3, metalness: 0.4 }), mic = mat(0x333344, 0.4);
+  const add = (geo, m, x, y, z, shadow = true) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = shadow; g.add(o); return o; };
+
+  // 다리, 양말, 부츠
   for (const s of [-1, 1]) {
-    add(new THREE.CylinderGeometry(0.07, 0.07, 0.66, 12), pants, 0.09 * s, 0.37, 0);
-    add(new THREE.BoxGeometry(0.11, 0.06, 0.2), shoe, 0.09 * s, 0.03, 0.04);
-    add(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 10), shirt, 0.27 * s, 0.95, 0);
-    add(new THREE.SphereGeometry(0.055, 12, 10), skin, 0.27 * s, 0.68, 0);
+    add(new THREE.CapsuleGeometry(0.042, 0.5, 6, 12), skin, 0.065 * s, 0.37, 0);
+    add(new THREE.CylinderGeometry(0.05, 0.047, 0.2, 14), sock, 0.065 * s, 0.24, 0);
+    const b = add(new THREE.CapsuleGeometry(0.052, 0.1, 6, 12), boot, 0.065 * s, 0.1, 0.005);
+    b.scale.set(1, 1, 1.15);
+    add(new THREE.BoxGeometry(0.1, 0.05, 0.17), boot, 0.065 * s, 0.025, 0.03);
   }
-  add(new THREE.BoxGeometry(0.42, 0.52, 0.22), shirt, 0, 0.96, 0);
-  add(new THREE.SphereGeometry(0.14, 20, 16), skin, 0, 1.36, 0);
-  const cap = add(new THREE.SphereGeometry(0.148, 20, 16, 0, Math.PI * 2, 0, Math.PI * 0.55), hair, 0, 1.37, -0.01);
-  cap.rotation.x = -0.25;
-  for (const s of [-1, 1]) add(new THREE.SphereGeometry(0.018, 8, 8), mat(0x111111), 0.05 * s, 1.38, 0.13);
+  // 주름 치마 (아래로 퍼지는 모양)
+  const skirtGeo = new THREE.LatheGeometry([new THREE.Vector2(0.125, 0.9), new THREE.Vector2(0.17, 0.78), new THREE.Vector2(0.235, 0.63)], 18);
+  const sk = add(skirtGeo, new THREE.MeshStandardMaterial({ color: 0xff8fbf, roughness: 0.55, flatShading: true, side: THREE.DoubleSide }), 0, 0, 0);
+  add(new THREE.TorusGeometry(0.128, 0.012, 8, 24), ribbon, 0, 0.9, 0).rotation.x = Math.PI / 2;  // 허리띠
+  // 몸통: 흰 블라우스 + 보라 크롭 재킷
+  add(new THREE.CylinderGeometry(0.105, 0.118, 0.3, 18), top, 0, 1.04, 0);
+  const jk = add(new THREE.CylinderGeometry(0.118, 0.124, 0.2, 18, 1, true, Math.PI * 0.62, Math.PI * 1.76), new THREE.MeshStandardMaterial({ color: 0xc9a7ff, roughness: 0.5, side: THREE.DoubleSide }), 0, 1.09, 0);
+  // 리본 넥타이
+  for (const s of [-1, 1]) {
+    const bow = add(new THREE.ConeGeometry(0.03, 0.05, 10), ribbon, 0.024 * s, 1.165, 0.105);
+    bow.rotation.z = s * Math.PI / 2;
+  }
+  add(new THREE.SphereGeometry(0.014, 10, 8), ribbon, 0, 1.165, 0.108);
+  // 목, 팔, 손
+  add(new THREE.CylinderGeometry(0.035, 0.038, 0.07, 12), skin, 0, 1.2, 0);
+  for (const s of [-1, 1]) {
+    add(new THREE.SphereGeometry(0.055, 14, 12), jacket, 0.14 * s, 1.15, 0);   // 퍼프 소매
+    const arm = add(new THREE.CapsuleGeometry(0.032, 0.3, 6, 10), skin, 0.165 * s, 0.97, 0);
+    arm.rotation.z = s * 0.12;
+    add(new THREE.SphereGeometry(0.036, 12, 10), skin, 0.185 * s, 0.79, 0.005);
+    add(new THREE.TorusGeometry(0.035, 0.01, 6, 16), gold, 0.18 * s, 0.84, 0).rotation.x = Math.PI / 2;  // 팔찌
+  }
+  // 머리와 얼굴
+  const HY = 1.335, HR = 0.13;
+  add(new THREE.SphereGeometry(HR, 28, 22), skin, 0, HY, 0);
+  for (const s of [-1, 1]) {
+    // 눈을 얼굴 표면 밖으로 조금 내밀어야 둥근 머리에 가려지지 않는다
+    const e = add(new THREE.SphereGeometry(0.022, 14, 12), eye, 0.046 * s, HY - 0.002, 0.121, false);
+    e.scale.set(0.9, 1.35, 0.5);
+    add(new THREE.SphereGeometry(0.006, 8, 8), shine, 0.046 * s + 0.004, HY + 0.008, 0.1322, false);
+    add(new THREE.SphereGeometry(0.0034, 6, 6), shine, 0.046 * s - 0.006, HY - 0.011, 0.1318, false);
+    const lash = add(new THREE.TorusGeometry(0.022, 0.0035, 6, 12, Math.PI), eye, 0.046 * s, HY + 0.008, 0.123, false);
+    lash.scale.set(1.05, 0.8, 1);
+    const b = add(new THREE.SphereGeometry(0.02, 10, 8), blush, 0.077 * s, HY - 0.035, 0.1, false);
+    b.scale.set(1.2, 0.6, 0.3);
+  }
+  const smile = add(new THREE.TorusGeometry(0.016, 0.004, 6, 14, Math.PI), lip, 0, HY - 0.052, 0.12, false);
+  smile.rotation.z = Math.PI;
+  // 머리카락: 정수리, 앞머리, 뒷머리, 양갈래
+  const cap = add(new THREE.SphereGeometry(HR + 0.012, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.5), hair, 0, HY, 0);
+  const bangs = add(new THREE.SphereGeometry(HR + 0.014, 28, 18, Math.PI * 0.12, Math.PI * 0.76, 0, Math.PI * 0.39), hair, 0, HY, 0);
+  const back = add(new THREE.CapsuleGeometry(0.115, 0.3, 8, 18), hair, 0, 1.2, -0.055);
+  back.scale.set(1, 1, 0.55);
+  add(new THREE.SphereGeometry(HR + 0.013, 24, 16, Math.PI, Math.PI, Math.PI * 0.45, Math.PI * 0.4), hair, 0, HY, -0.004); // 뒤통수 아래
+  for (const s of [-1, 1]) {
+    const tail = add(new THREE.CapsuleGeometry(0.042, 0.3, 6, 12), hair, 0.165 * s, 1.24, -0.035);
+    tail.rotation.z = s * 0.18;
+    tail.scale.set(1, 1, 0.8);
+    add(new THREE.SphereGeometry(0.05, 14, 12), hair, 0.145 * s, 1.41, -0.03);
+    for (const k of [-1, 1]) {   // 리본 (꼭짓점이 가운데 매듭에서 만난다)
+      const r = add(new THREE.ConeGeometry(0.03, 0.055, 12), ribbon, 0.15 * s + 0.03 * k, 1.47, 0.005);
+      r.rotation.z = k * Math.PI / 2;
+    }
+    add(new THREE.SphereGeometry(0.015, 10, 8), ribbon, 0.15 * s, 1.47, 0.008);
+  }
+  // 별 머리핀과 헤드셋 마이크
+  const star = add(new THREE.OctahedronGeometry(0.022), gold, -0.075, 1.43, 0.085);
+  star.scale.set(1, 1, 0.4);
+  add(new THREE.SphereGeometry(0.02, 10, 8), mic, 0.133, HY - 0.005, 0.01);
+  const boom = add(new THREE.CylinderGeometry(0.0035, 0.0035, 0.1, 6), mic, 0.11, HY - 0.035, 0.065);
+  boom.rotation.set(0.9, 0, -0.55);
+  add(new THREE.SphereGeometry(0.011, 8, 8), mic, 0.075, HY - 0.06, 0.105);
   return g;
 }
 const student = makeStudent();
@@ -436,6 +516,35 @@ function refreshButtons() {
   viewBtn.textContent = viewSaved ? '↩ 돌아가기' : '📐 각도기 보기';
   viewBtn.classList.toggle('on', !!viewSaved);
   clearBtn.disabled = !apparatus;
+  refreshCheck();
+}
+// 측정값 확인: 각도기가 그림자 끝에 놓였을 때만 보인다
+let checkedFor = null;  // 확인 칸이 어떤 태양 위치에 대한 것인지
+function refreshCheck() {
+  const box = $('checkBox');
+  const key = protractorShown ? `${sun.alt.toFixed(3)}` : null;
+  if (key !== checkedFor) {           // 새로 측정할 때마다 입력과 결과를 비운다
+    $('measured').value = '';
+    $('checkMsg').hidden = true;
+    checkedFor = key;
+  }
+  box.hidden = !protractorShown;
+}
+function checkMeasurement() {
+  const out = $('checkMsg');
+  const v = parseFloat(String($('measured').value).replace(',', '.'));
+  const show = (html, kind) => { out.innerHTML = html; out.className = 'result' + (kind ? ' ' + kind : ''); out.hidden = false; };
+  if (!Number.isFinite(v)) { show('각도기에서 읽은 값을 숫자로 넣어 주세요.', ''); return; }
+  const actual = sun.alt, diff = v - actual;
+  if (Math.abs(diff) <= 1.5) {
+    show(`<span class="big">🎉 정확해요!</span>태양 고도는 약 <b>${actual.toFixed(1)}°</b>예요. 막대 끝을 지나 그림자 끝에 닿는 햇빛과 땅이 이루는 각, 곧 실과 그림자 사이의 각이 태양 고도랍니다.`, 'ok');
+  } else if (Math.abs(v - (180 - actual)) <= 1.5) {
+    show(`<span class="big">🔄 반대쪽 눈금을 읽었어요</span>막대 쪽 바닥선에 있는 <b>0°</b>부터 세어 올라가며 실이 지나는 눈금을 다시 읽어 보세요.`, 'bad');
+  } else if (Math.abs(diff) <= 5) {
+    show(`<span class="big">👀 거의 다 왔어요!</span>${diff > 0 ? '조금 더 <b>작은</b>' : '조금 더 <b>큰</b>'} 값이에요. <b>각도기 보기</b>로 눈금을 한 칸씩 다시 세어 보세요.`, 'bad');
+  } else {
+    show(`<span class="big">🤔 다시 재 볼까요?</span>실이 각도기 바깥쪽 눈금 어디를 지나는지 찾고, 막대 쪽 0°부터 세어 읽어 보세요.`, 'bad');
+  }
 }
 function refreshAnswer() {
   answerBtn.textContent = answerShown ? '정답 숨기기' : '정답 보기';
@@ -604,7 +713,7 @@ function dropString() {
   if (tip && Math.hypot(stringEnd.x - tip.x, stringEnd.z - tip.z) <= SNAP_DISTANCE) {
     stringEnd.copy(tip);
     showProtractor();
-    say('그림자 끝에 실을 놓았어요! <b>각도기 보기</b>를 눌러 실이 가리키는 눈금을 읽어 보세요. 그 각이 태양 고도예요.', 'ok');
+    say('그림자 끝에 실을 놓았어요! <b>각도기 보기</b>를 눌러 실이 가리키는 눈금을 읽고, 아래 <b>측정한 태양 고도 확인</b>에 넣어 보세요.', 'ok');
   } else {
     const note = noteMessage();
     if (note) say(...note);
@@ -688,7 +797,7 @@ function enterView() {
   setViewDecor(false);
   flyTo(center.clone().addScaledVector(n, side * dist), center);
   refreshButtons();
-  say('실이 각도기의 몇 도 눈금을 지나는지 읽어 보세요. 화면을 끌면 둘러볼 수 있어요.', 'ok');
+  say('실이 각도기의 몇 도 눈금을 지나는지 읽고, <b>측정한 태양 고도 확인</b>에 넣어 <b>확인</b>을 눌러 보세요.', 'ok');
 }
 function exitView(instant) {
   if (!viewSaved) return;
@@ -706,6 +815,8 @@ function exitView(instant) {
 rodBtn.addEventListener('click', placeRod);
 clearBtn.addEventListener('click', clearRig);
 viewBtn.addEventListener('click', () => { if (viewSaved) { exitView(false); say('각도기에서 읽은 값을 정답과 비교해 보세요.'); } else enterView(); });
+$('checkBtn').addEventListener('click', checkMeasurement);
+$('measured').addEventListener('keydown', e => { if (e.key === 'Enter') checkMeasurement(); });
 answerBtn.addEventListener('click', () => { answerShown = !answerShown; refreshAnswer(); });
 document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
   if (viewSaved) exitView(true);
