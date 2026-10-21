@@ -574,6 +574,9 @@ const ROD_BASE = new THREE.Vector3(0, BOARD_TOP, 0);
 const shadowGeo = new THREE.PlaneGeometry(ROD_RADIUS * 2, 1); shadowGeo.rotateX(-Math.PI / 2); shadowGeo.translate(0, 0, -0.5);
 const shadowStrip = new THREE.Mesh(shadowGeo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.5, depthWrite: false }));
 shadowStrip.position.y = BOARD_TOP + 0.002; rig.add(shadowStrip);
+// 해가 낮아 그림자가 판보다 길면, 판 밖의 땅 위로 이어서 그린다
+const shadowGround = new THREE.Mesh(shadowGeo, shadowStrip.material);
+shadowGround.position.y = 0.003; shadowGround.visible = false; rig.add(shadowGround);
 
 // 실
 const stringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 8), new THREE.MeshStandardMaterial({ color: 0xd62828, roughness: 0.6 }));
@@ -781,6 +784,7 @@ function refreshShadow() {
   if (!apparatus) return;
   apparatus.tip = null; apparatus.note = null; apparatus.length = null;
   shadowStrip.visible = false;
+  shadowGround.visible = false;
   if (sun.alt <= 0.5) { apparatus.note = 'night'; setBoardHalf(BOARD_MIN_HALF); return; }
   const length = ROD_HEIGHT / Math.tan(sun.alt * D2R);
   const horiz = new THREE.Vector3(-sun.dir.x, 0, -sun.dir.z);
@@ -796,6 +800,14 @@ function refreshShadow() {
   shadowStrip.visible = apparatus.raise >= 1;
   shadowStrip.scale.set(1, 1, drawn);
   shadowStrip.rotation.y = Math.atan2(-d.x, -d.z);
+  if (length > edge) {
+    // 땅은 판보다 BOARD_TOP만큼 낮으므로 막대 꼭대기 높이를 (판 두께 + 막대)로 보고 그림자 끝을 구한다
+    const groundLength = Math.min(300, (ROD_HEIGHT + BOARD_TOP) / Math.tan(sun.alt * D2R));
+    shadowGround.visible = shadowStrip.visible && groundLength > edge;
+    shadowGround.position.set(d.x * groundLength, 0.003, d.z * groundLength);
+    shadowGround.rotation.y = Math.atan2(d.x, d.z);   // 그림자 끝에서 판 가장자리 쪽으로 뻗는다
+    shadowGround.scale.set(1, 1, groundLength - edge);
+  }
 }
 function noteMessage() {
   if (!apparatus) return null;
