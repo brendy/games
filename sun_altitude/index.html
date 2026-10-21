@@ -91,6 +91,7 @@
     <div class="badge" id="badge">☀️ 태양이 떠 있어요</div>
     <div class="camBtns">
       <button data-cam="home">↺ 처음 시점</button>
+      <button data-cam="sky">☀️ 해 보기</button>
       <button data-cam="top">위에서 보기</button>
     </div>
   </div>
@@ -218,13 +219,16 @@ view.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x8cc6ff, 70, 380);
-const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 1500);
+const FOV = 50;
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.05, 1500);
 const HOME = { pos: new THREE.Vector3(5.2, 4.4, 8.2), target: new THREE.Vector3(0, 0.9, -1.4) };
 camera.position.copy(HOME.pos);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.copy(HOME.target);
 controls.enableDamping = true;
-controls.maxPolarAngle = Math.PI * 0.495;
+let followSun = false;      // 해 보기 중이면 해를 따라 카메라를 돌린다
+controls.addEventListener('start', () => { if (!camTween) followSun = false; });
+controls.maxPolarAngle = Math.PI * 0.92;
 controls.minDistance = 1.2;
 controls.maxDistance = 45;
 
@@ -325,11 +329,11 @@ shadowStrip.position.y = BOARD_TOP + 0.002; rig.add(shadowStrip);
 // 실
 const stringMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1, 8), new THREE.MeshStandardMaterial({ color: 0xd62828, roughness: 0.6 }));
 rig.add(stringMesh);
-const handle = new THREE.Mesh(new THREE.SphereGeometry(0.09, 18, 14), new THREE.MeshStandardMaterial({ color: 0xe03131, emissive: 0x550000 }));
+const handle = new THREE.Mesh(new THREE.SphereGeometry(0.045, 18, 14), new THREE.MeshStandardMaterial({ color: 0xe03131, emissive: 0x550000 }));
 rig.add(handle);
 const handleHit = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
 handle.add(handleHit);
-const pulse = new THREE.Mesh(new THREE.RingGeometry(0.16, 0.22, 40), new THREE.MeshBasicMaterial({ color: 0xe03131, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+const pulse = new THREE.Mesh(new THREE.RingGeometry(0.09, 0.13, 40), new THREE.MeshBasicMaterial({ color: 0xe03131, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
 pulse.rotation.x = -Math.PI / 2; rig.add(pulse);
 const restingEnd = new THREE.Vector3(0.16, BOARD_TOP, 0.12);
 
@@ -509,6 +513,7 @@ function applySun(announce) {
   const p = solarPosition(settings.lat, settings.lon, year, settings.month, settings.day, settings.hour, settings.minute, settings.tz);
   sun = { alt: p.alt, az: p.az, dir: sunVector(p.alt, p.az) };
   updateSky();
+  if (followSun && !viewSaved) skyView(true);
 
   let moved = false;
   if (apparatus) {
@@ -534,7 +539,7 @@ function refreshStringPose() {
   if (!apparatus) return;
   if (stringState === 'idle') stringEnd.copy(restingEnd);
   setString(ROD_TOP, stringEnd);
-  handle.position.copy(stringEnd).setY(BOARD_TOP + 0.09);
+  handle.position.copy(stringEnd).setY(BOARD_TOP); // 구의 중심 = 실 끝 (아래 절반은 판에 잠긴다)
   pulse.position.copy(stringEnd).setY(BOARD_TOP + 0.004);
   pulse.visible = stringState === 'idle';
 }
@@ -665,19 +670,21 @@ function setViewDecor(visible) {
   handle.visible = visible && !!apparatus && apparatus.raise >= 1;
   for (const c of COMPASS) c.sprite.visible = visible;
 }
-function flyTo(pos, target, ms = 650) {
-  camTween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), start: performance.now(), ms };
+function flyTo(pos, target, ms = 650, fov = FOV) {
+  camTween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(),
+    f0: camera.fov, f1: fov, start: performance.now(), ms };
 }
 function enterView() {
+  followSun = false;
   if (!protractorShown || !apparatus || !apparatus.tip) return;
   const tip = apparatus.tip;
   const u = new THREE.Vector3().subVectors(ROD_BASE, tip).setY(0).normalize();
   const n = new THREE.Vector3().crossVectors(u, new THREE.Vector3(0, 1, 0));
   const side = camera.position.clone().sub(tip).dot(n) >= 0 ? 1 : -1;
   const center = tip.clone().add(new THREE.Vector3(0, PROTRACTOR_R * 0.5, 0));
-  const tan = Math.tan(camera.fov * D2R / 2);
+  const tan = Math.tan(FOV * D2R / 2);
   const dist = Math.max((PROTRACTOR_R * 1.4) / (2 * tan), (PROTRACTOR_R * 2.5) / (2 * tan * camera.aspect));
-  viewSaved = { pos: camera.position.clone(), target: controls.target.clone() };
+  viewSaved = { pos: camera.position.clone(), target: controls.target.clone(), fov: camera.fov };
   setViewDecor(false);
   flyTo(center.clone().addScaledVector(n, side * dist), center);
   refreshButtons();
@@ -688,8 +695,10 @@ function exitView(instant) {
   const saved = viewSaved;
   viewSaved = null;
   setViewDecor(true);
-  if (instant) { camTween = null; camera.position.copy(saved.pos); controls.target.copy(saved.target); }
-  else flyTo(saved.pos, saved.target);
+  if (instant) {
+    camTween = null; camera.position.copy(saved.pos); controls.target.copy(saved.target);
+    camera.fov = saved.fov; camera.updateProjectionMatrix();
+  } else flyTo(saved.pos, saved.target, 650, saved.fov);
   refreshButtons();
 }
 
@@ -700,9 +709,30 @@ viewBtn.addEventListener('click', () => { if (viewSaved) { exitView(false); say(
 answerBtn.addEventListener('click', () => { answerShown = !answerShown; refreshAnswer(); });
 document.querySelectorAll('[data-cam]').forEach(b => b.addEventListener('click', () => {
   if (viewSaved) exitView(true);
+  followSun = false;
   if (b.dataset.cam === 'top') flyTo(new THREE.Vector3(0.01, 24, 0.6), new THREE.Vector3(0, 0, 0));
+  else if (b.dataset.cam === 'sky') skyView();
   else flyTo(HOME.pos, HOME.target);
 }));
+
+// 해 보기: 해를 등지지 않고 해 쪽을 바라보며, 막대·그림자와 하늘의 해가 한 화면에 함께 들어오게 한다
+function skyView(quiet) {
+  followSun = true;
+  const horiz = new THREE.Vector3(sun.dir.x, 0, sun.dir.z);
+  if (horiz.lengthSq() < 1e-6) horiz.set(0, 0, 1);
+  horiz.normalize();
+  const D = 6.5, eyeHeight = 1.6;
+  const eye = horiz.clone().multiplyScalar(-D).setY(eyeHeight);   // 막대를 사이에 두고 해의 반대편에 선다
+  const low = -Math.atan2(eyeHeight, D) / D2R - 4;                 // 막대 밑동보다 조금 아래까지
+  const high = Math.min(Math.max(sun.alt, 8) + 10, 89);             // 해보다 조금 위까지
+  const fov = Math.min(105, Math.max(FOV, high - low + 6));
+  const mid = (low + high) / 2 * D2R;
+  const look = horiz.clone().multiplyScalar(Math.cos(mid)).setY(Math.sin(mid));
+  flyTo(eye, eye.clone().addScaledVector(look, 6), quiet ? 350 : 800, fov);
+  if (quiet) return;
+  if (sun.alt > 0) say(`해가 하늘의 어느 쪽, 얼마나 높이 떠 있는지 살펴보세요. 시각 막대를 움직이면 해가 하늘을 따라 움직여요. 화면을 끌면 하늘을 둘러볼 수 있어요.`);
+  else say('지금은 해가 지평선 아래에 있어서 보이지 않아요. 낮 시각을 넣고 다시 <b>해 보기</b>를 눌러 보세요.', 'bad');
+}
 
 /* =====================================================================
    그리기
@@ -729,6 +759,8 @@ function tick(t) {
     const k = Math.min(1, (t - camTween.start) / camTween.ms), e = ease(k);
     camera.position.lerpVectors(camTween.p0, camTween.p1, e);
     controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+    camera.fov = camTween.f0 + (camTween.f1 - camTween.f0) * e;
+    camera.updateProjectionMatrix();
     if (k >= 1) camTween = null;
   }
   // 학생은 실 끝 옆으로 걸어간다
@@ -751,6 +783,7 @@ function tick(t) {
   }
   sunSprite.position.copy(camera.position).addScaledVector(sun.dir, 320);
   controls.update();
+  if (camera.position.y < 0.3) camera.position.y = 0.3; // 땅속으로 들어가지 않게
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
