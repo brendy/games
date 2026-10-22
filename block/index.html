@@ -18,7 +18,7 @@
   header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
   header h1{font-size:20px;margin:0 6px 0 0;white-space:nowrap}
   .tabs{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .tabs button{border:0;border-radius:0;padding:8px 14px}
+  .tabs button{border:0;border-radius:0;padding:8px 14px;white-space:nowrap}
   .tabs button+button{border-left:1px solid var(--line)}
   button{font:inherit;font-size:15px;border:1px solid var(--line);background:#fff;color:var(--ink);
     padding:7px 12px;border-radius:10px;cursor:pointer}
@@ -41,7 +41,7 @@
   #view canvas{display:block;width:100%;height:100%;touch-action:none}
   .camBtns{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
   .camBtns button{font-size:13px;padding:6px 10px;background:rgba(255,255,255,.92)}
-  .tool{position:absolute;right:12px;bottom:12px;display:none;gap:6px}
+  .tool{position:absolute;right:12px;top:12px;display:none;gap:6px}
   .tool.show{display:flex}
   .tool button{font-size:15px;padding:8px 14px;background:rgba(255,255,255,.95)}
   aside{width:300px;background:var(--panel);border-left:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
@@ -50,6 +50,17 @@
   .how{font-size:15px;line-height:1.6;margin:0;color:#3a3d45}
   .how li{margin-bottom:4px}
   .legend{display:flex;gap:6px;flex-wrap:wrap}
+  .board{border:2px solid #7b4fc9;border-radius:14px;padding:10px 12px;background:#f6f0ff}
+  .board[hidden]{display:none}
+  .boardTitle{font-weight:800;color:#5b2fa8;margin-bottom:8px}
+  .boardTitle small{font-weight:400;color:var(--muted)}
+  .boardRow{display:flex;align-items:center;gap:8px}
+  .grid3{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px}
+  .grid3 div{display:grid;place-items:center;font-size:22px;font-weight:800;border-radius:6px}
+  .grid3 .n{background:#c9b3f2;color:#2e1466;border:2px solid #7b4fc9}
+  .grid3 .e{border:2px dashed #c7bde0;color:transparent}
+  .board .side{font-size:14px;font-weight:700;color:var(--side)}
+  .board .front{font-size:14px;font-weight:700;color:var(--front);width:138px;text-align:center;margin-top:4px}
   .legend span{font-size:13px;font-weight:700;color:#fff;padding:3px 10px;border-radius:999px}
   .msg{border-radius:12px;padding:12px;font-size:15px;line-height:1.55;background:#f7f5ef;border:1px solid var(--line);min-height:64px}
   .msg.ok{background:#e7f6ec;border-color:#9ad4ae;color:#11633a}
@@ -64,8 +75,9 @@
     main{flex-direction:column}
     #view{min-height:52vh}
     aside{width:auto;border-left:0;border-top:1px solid var(--line);padding:12px 16px}
-    .msg{order:-3;min-height:0} .actions{order:-2} #clear{order:-1}
+    .msg{order:-4;min-height:0} .actions{order:-3} #clear{order:-2} .board{order:-1}
     .brand small{display:none}
+    .tabs button{padding:8px 10px;font-size:14px}
   }
 </style>
 </head>
@@ -73,10 +85,11 @@
 <header>
   <h1>🧊 쌓기나무 위·앞·옆</h1>
   <div class="tabs" role="tablist">
-    <button id="tabA" class="on" role="tab">A 보고 모양 그리기</button>
-    <button id="tabB" role="tab">B 모양 보고 쌓기</button>
+    <button id="tabA" class="on" role="tab">A 보고 그리기</button>
+    <button id="tabB" role="tab">B 보고 쌓기</button>
+    <button id="tabC" role="tab">C 수만큼 쌓기</button>
   </div>
-  <div class="score"><span>A 점수 <b id="scA">0</b></span><span>B 점수 <b id="scB">0</b></span></div>
+  <div class="score"><span>A 점수 <b id="scA">0</b></span><span>B 점수 <b id="scB">0</b></span><span>C 점수 <b id="scC">0</b></span></div>
   <a class="brand" href="https://games.brendy.net/" title="Brendy Games 첫 화면으로">
     <span class="pad">🎮</span><span><b>Brendy</b> Games<br><small>games.brendy.net</small></span>
   </a>
@@ -98,6 +111,11 @@
   <aside>
     <h2 id="howTitle">A. 쌓기나무를 보고 모양 그리기</h2>
     <ol class="how" id="how"></ol>
+    <div class="board" id="board" hidden>
+      <div class="boardTitle">위에서 본 모양 <small>(칸의 수만큼 쌓아요)</small></div>
+      <div class="boardRow"><div class="grid3" id="grid3"></div><span class="side">옆 →</span></div>
+      <div class="front">↑ 앞</div>
+    </div>
     <div class="legend"><span style="background:var(--top)">위</span><span style="background:var(--front)">앞</span><span style="background:var(--side)">옆</span></div>
     <div class="msg" id="msg">문제를 풀고 <b>확인</b>을 눌러 보세요.</div>
     <div class="actions">
@@ -260,7 +278,15 @@ label('앞', '#e89a00', new THREE.Vector3(0, 3.6, FRONT_Z));
 label('옆', '#d0443a', new THREE.Vector3(SIDE_X, 3.6, 0));
 label('위', '#2e8b3e', new THREE.Vector3(-2.1, TOP_Y, -1.5));
 
-// B 노란 바닥 칸
+// B 노란 바닥 칸 / C 보라 바닥 칸(숫자)
+const numTex = {};
+function numberTexture(n) {
+  if (numTex[n]) return numTex[n];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d');
+  g.fillStyle = '#c9b3f2'; g.fillRect(0, 0, 128, 128);
+  if (n) { g.fillStyle = '#2e1466'; g.font = 'bold 84px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(n), 64, 70); }
+  return (numTex[n] = new THREE.CanvasTexture(cv));
+}
 for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
   const t = new THREE.Mesh(new THREE.PlaneGeometry(0.96, 0.96),
     new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
@@ -268,11 +294,21 @@ for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
   floorGroup.add(t);
 }
 
+function setFloor() {
+  floorGroup.children.forEach(t => {
+    const [i, j] = t.userData.col, m = t.material;
+    if (state.mode === 'C') { m.map = numberTexture(state.h[i][j]); m.color.set(0xffffff); m.opacity = 0.95; }
+    else { m.map = null; m.color.set(0xffd84a); m.opacity = 0.75; }
+    m.needsUpdate = true;
+  });
+}
+
 /* ---------- 상태 ---------- */
+let saved = {}; try { saved = JSON.parse(localStorage.getItem('block-score') || '{}'); } catch (e) {}
 const state = { mode: 'A', h: null, solved: false, build: null, tool: 'add',
-  score: JSON.parse(localStorage.getItem('block-score') || '{"A":0,"B":0}') };
+  score: Object.assign({ A: 0, B: 0, C: 0 }, saved) };
 const $ = id => document.getElementById(id);
-function showScore() { $('scA').textContent = state.score.A; $('scB').textContent = state.score.B;
+function showScore() { $('scA').textContent = state.score.A; $('scB').textContent = state.score.B; $('scC').textContent = state.score.C;
   try { localStorage.setItem('block-score', JSON.stringify(state.score)); } catch (e) {} }
 
 function drawShape(h) {
@@ -285,8 +321,21 @@ const HOW = {
       '다 칠했으면 <b>확인</b>!'],
   B: ['판에 그려진 위·앞·옆에서 본 모양을 살펴보세요.',
       '노란 바닥 칸을 눌러 쌓기나무를 쌓아요. 빼려면 <b>➖ 빼기</b>를 고르고 누르세요.',
-      '한 칸에 3층까지 쌓을 수 있어요. 다 쌓았으면 <b>확인</b>!']
+      '한 칸에 3층까지 쌓을 수 있어요. 다 쌓았으면 <b>확인</b>!'],
+  C: ['<b style="color:#5b2fa8">위에서 본 모양</b>의 각 칸에 적힌 수만큼 쌓기나무를 쌓아요. (보라 바닥에도 숫자가 있어요)',
+      '쌓을 때마다 <b style="color:var(--front)">앞</b>·<b style="color:var(--side)">옆</b>·<b style="color:var(--top)">위</b> 판이 저절로 칠해져요. 어떤 모양이 되는지 살펴보세요.',
+      '다 쌓았으면 <b>확인</b>! 빼려면 <b>➖ 빼기</b>를 고르고 누르세요.']
 };
+// C: 쌓은 모양을 판에 칠하기
+function paintBuild() {
+  clearPanels(); const u = views(state.build);
+  for (const n of ['top', 'front', 'side']) for (const k of u[n]) setCell(n, k, true);
+}
+function showBoard() {
+  $('grid3').innerHTML = [0, 1, 2].map(j => [0, 1, 2].map(i => {
+    const n = state.h[i][j]; return n ? `<div class="n">${n}</div>` : '<div class="e">0</div>';
+  }).join('')).join('');
+}
 function msg(html, cls = '') { const m = $('msg'); m.className = 'msg ' + cls; m.innerHTML = html; }
 
 function newProblem() {
@@ -294,19 +343,26 @@ function newProblem() {
   const v = views(state.h);
   if (state.mode === 'A') {
     drawShape(state.h); floorGroup.visible = false;
+  } else if (state.mode === 'C') {
+    state.build = [[0,0,0],[0,0,0],[0,0,0]]; drawShape(state.build); floorGroup.visible = true;
+    showBoard();
   } else {
     state.build = [[0,0,0],[0,0,0],[0,0,0]]; drawShape(state.build); floorGroup.visible = true;
     for (const k of v.top) setCell('top', k, true);
     for (const k of v.front) setCell('front', k, true);
     for (const k of v.side) setCell('side', k, true);
   }
-  msg(state.mode === 'A' ? '판의 칸을 눌러 <b>위·앞·옆에서 본 모양</b>을 색칠해 보세요.' : '판의 모양을 보고 노란 바닥 위에 <b>쌓기나무</b>를 쌓아 보세요.');
+  setFloor();
+  msg({ A: '판의 칸을 눌러 <b>위·앞·옆에서 본 모양</b>을 색칠해 보세요.',
+        B: '판의 모양을 보고 노란 바닥 위에 <b>쌓기나무</b>를 쌓아 보세요.',
+        C: '숫자판을 보고 보라 바닥 위에 <b>수만큼</b> 쌓아 보세요.' }[state.mode]);
 }
 function setMode(m) {
   state.mode = m;
-  $('tabA').classList.toggle('on', m === 'A'); $('tabB').classList.toggle('on', m === 'B');
-  $('tool').classList.toggle('show', m === 'B');
-  $('howTitle').textContent = m === 'A' ? 'A. 쌓기나무를 보고 모양 그리기' : 'B. 모양을 보고 쌓기나무 쌓기';
+  for (const k of 'ABC') $('tab' + k).classList.toggle('on', m === k);
+  $('tool').classList.toggle('show', m !== 'A');
+  $('board').hidden = m !== 'C';
+  $('howTitle').textContent = { A: 'A. 쌓기나무를 보고 모양 그리기', B: 'B. 모양을 보고 쌓기나무 쌓기', C: 'C. 위에서 본 모양의 수만큼 쌓기' }[m];
   $('how').innerHTML = HOW[m].map(t => '<li>' + t + '</li>').join('');
   newProblem();
 }
@@ -314,7 +370,13 @@ function setMode(m) {
 function check() {
   const v = views(state.h); const bad = [];
   let count = 0;
-  if (state.mode === 'A') {
+  if (state.mode === 'C') {
+    count = state.build.flat().reduce((a, b) => a + b, 0);
+    if (count === 0) { msg('아직 쌓기나무를 쌓지 않았어요.', 'bad'); return; }
+    let wrong = 0;
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (state.build[i][j] !== state.h[i][j]) wrong++;
+    if (wrong) { msg(`<span class="big">다시 확인해요</span>· 숫자와 다르게 쌓은 칸이 <b>${wrong}칸</b> 있어요.<br>· 칸마다 몇 층인지 세어 보세요.`, 'bad'); return; }
+  } else if (state.mode === 'A') {
     for (const n of ['top', 'front', 'side']) if (!sameSet(panels[n].filled, v[n])) bad.push(n);
   } else {
     const u = views(state.build); count = state.build.flat().reduce((a, b) => a + b, 0);
@@ -326,15 +388,16 @@ function check() {
     let extra = '';
     if (!state.solved) { state.solved = true; state.score[state.mode]++; showScore(); extra = ' <b>+1점</b>'; }
     else extra = ' (이 문제는 이미 점수를 받았어요)';
-    const cnt = state.mode === 'B' ? `<br>사용한 쌓기나무: <b>${count}개</b>` : '';
-    msg(`<span class="big">🎉 정답!</span>위·앞·옆에서 본 모양이 모두 맞아요.${extra}${cnt}<br><b>새 문제</b>로 계속 도전해 보세요.`, 'ok');
+    const cnt = state.mode !== 'A' ? `<br>사용한 쌓기나무: <b>${count}개</b>` : '';
+    const what = state.mode === 'C' ? '숫자만큼 정확히 쌓았어요. 판에 칠해진 위·앞·옆 모양도 살펴보세요.' : '위·앞·옆에서 본 모양이 모두 맞아요.';
+    msg(`<span class="big">🎉 정답!</span>${what}${extra}${cnt}<br><b>새 문제</b>로 계속 도전해 보세요.`, 'ok');
   } else {
     msg(`<span class="big">다시 확인해요</span>${bad.map(n => '· ' + name[n] + '에서 본 모양이 달라요.').join('<br>')}`, 'bad');
   }
 }
 function clearWork() {
   if (state.mode === 'A') clearPanels();
-  else { state.build = [[0,0,0],[0,0,0],[0,0,0]]; drawShape(state.build); }
+  else { state.build = [[0,0,0],[0,0,0],[0,0,0]]; drawShape(state.build); if (state.mode === 'C') paintBuild(); }
   msg('처음부터 다시 해 보세요.');
 }
 
@@ -358,7 +421,7 @@ renderer.domElement.addEventListener('pointerup', e => {
     const [i, j] = hit.object.userData.col; const h = state.build;
     if (state.tool === 'add') { if (h[i][j] < 3) h[i][j]++; else msg('한 칸에는 3층까지만 쌓을 수 있어요.'); }
     else if (h[i][j] > 0) h[i][j]--;
-    drawShape(h);
+    drawShape(h); if (state.mode === 'C') paintBuild();
   }
 });
 
@@ -378,6 +441,7 @@ document.querySelectorAll('[data-cam]').forEach(b => b.onclick = () => goCam(b.d
 /* ---------- 버튼 ---------- */
 $('tabA').onclick = () => setMode('A');
 $('tabB').onclick = () => setMode('B');
+$('tabC').onclick = () => setMode('C');
 $('check').onclick = check;
 $('next').onclick = newProblem;
 $('clear').onclick = clearWork;
